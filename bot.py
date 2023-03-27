@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
-import json, html, http, logging, requests, traceback, random, re
+import argparse, click, json, html, http, logging, requests, traceback, random, re
+from rich_argparse import RichHelpFormatter
 from typing import Any, Dict, Tuple
 
 from telegram import __version__ as TG_VER
@@ -32,13 +33,6 @@ from rich.logging import RichHandler
 
 install(show_locals=True)
 
-FORMAT = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-logging.basicConfig(
-    level=logging.INFO, format=FORMAT, datefmt="[%X]", handlers=[RichHandler()]
-)
-
-logger = logging.getLogger("rich")
-
 END = ConversationHandler.END
 
 (
@@ -65,10 +59,10 @@ END = ConversationHandler.END
     TICKET_ID,  # 19
     NEW_COMMENT,  # 20
     # new_ticket
-    SUBJECT, # 21
-    BODY, # 22
-    ATTACHMENT, # 23
-    CREATE, # 24
+    SUBJECT,  # 21
+    BODY,  # 22
+    ATTACHMENT,  # 23
+    CREATE,  # 24
     # attributes
     EMAIL,
     # errors
@@ -80,20 +74,21 @@ END = ConversationHandler.END
 otrs_url = "https://otrs.efsol.ru/otrs/nph-genericinterface.pl/Webservice/bot"
 otrs_user = "telegram_bot"
 otrs_password = "GBYudLWmfGQV"
+args = {}
 
 
 def _otrs_request(path: str, json: str) -> Any:
-    logger.info("def _otrs_request")
+    logging.info("def _otrs_request")
 
-    logger.info(f"path: {path}")
-    logger.info(f"request: {json}")
+    logging.info(f"path: {path}")
+    logging.info(f"request: {json}")
     json["UserLogin"] = otrs_user
     json["Password"] = otrs_password
 
     response = requests.post(f"{otrs_url}/{path}", json=json)
     response_json = response.json()
-    logger.info(f"code: {response.status_code}")
-    logger.info(f"raw: {response_json}")
+    logging.info(f"code: {response.status_code}")
+    logging.info(f"raw: {response_json}")
 
     return response_json
 
@@ -157,7 +152,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> str:
 
 
 async def authorisation(update: Update, context: ContextTypes.DEFAULT_TYPE) -> str:
-    logger.info("def authorisation")
+    logging.info("def authorisation")
 
     context.user_data[CONFIRMATION_CODE] = random.randint(100000, 999999)
     confirm_account = _otrs_request(
@@ -168,7 +163,7 @@ async def authorisation(update: Update, context: ContextTypes.DEFAULT_TYPE) -> s
         },
     )
 
-    logger.info(confirm_account)
+    logging.info(confirm_account)
 
     if not bool(confirm_account["data"]):
         context.user_data[EMAIL_NOT_FOUND] = True
@@ -242,23 +237,23 @@ async def ask_for_input(
 
 
 async def save_input(update: Update, context: ContextTypes.DEFAULT_TYPE) -> str:
-    logger.info("def save_input")
-    logger.info(context.user_data)
+    logging.info("def save_input")
+    logging.info(context.user_data)
 
     input_text = update.message.text
 
     if context.user_data[CURRENT_STEP] == str(AUTHORISATION):
-        logger.info("AUTHORISATION")
+        logging.info("AUTHORISATION")
         context.user_data[EMAIL] = input_text
         return await authorisation(update, context)
     elif context.user_data[CURRENT_STEP] == str(CONFIRMATION_CODE):
-        logger.info(f"CONFIRMATION_CODE")
+        logging.info(f"CONFIRMATION_CODE")
         context.user_data[CONFIRMATION_CODE_STATUS] = (
             2 if int(context.user_data[CONFIRMATION_CODE]) == int(input_text) else 1
         )
         return await ask_for_input(update, context, str(CONFIRMATION_CODE))
     elif context.user_data[CURRENT_STEP] == str(UPDATE_TICKET):
-        logger.info(f"CONFIRMATION_CODE")
+        logging.info(f"CONFIRMATION_CODE")
         ticket_update = _otrs_request(
             "update",
             {
@@ -279,7 +274,7 @@ async def save_input(update: Update, context: ContextTypes.DEFAULT_TYPE) -> str:
 
 
 async def end_second_level(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    logger.info("def end_second_level")
+    logging.info("def end_second_level")
     context.user_data[START_OVER] = True
     await start(update, context)
 
@@ -291,10 +286,11 @@ async def update_tickets(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
 
     context.user_data[CURRENT_STEP] = str(UPDATE_TICKET)
     auth = _otrs_request(
-        "search", {
+        "search",
+        {
             "CustomerUserLogin": context.user_data[CUSTOMER_USER_LOGIN],
-            "StateType": ['open', 'new', 'pending reminder'],
-        }
+            "StateType": ["open", "new", "pending reminder"],
+        },
     )
 
     user_data = context.user_data
@@ -365,11 +361,11 @@ async def update_ticket(update: Update, context: ContextTypes.DEFAULT_TYPE) -> s
 async def check_tickets(update: Update, context: ContextTypes.DEFAULT_TYPE) -> str:
     logging.info("def check_tickets")
     auth = _otrs_request(
-        "search", {
+        "search",
+        {
             "CustomerUserLogin": context.user_data[CUSTOMER_USER_LOGIN],
-            "StateType": ['open', 'new', 'pending reminder'],
-
-        }
+            "StateType": ["open", "new", "pending reminder"],
+        },
     )
 
     user_data = context.user_data
@@ -391,7 +387,7 @@ async def check_tickets(update: Update, context: ContextTypes.DEFAULT_TYPE) -> s
                     )
                 ]
             )
-    
+
     buttons.append([InlineKeyboardButton(text="Назад", callback_data=str(END))])
 
     keyboard = InlineKeyboardMarkup(buttons)
@@ -500,7 +496,9 @@ async def show_data(update: Update, context: ContextTypes.DEFAULT_TYPE) -> str:
 
     new_ticket = context.user_data.get(NEW_TICKET)
 
-    text = f"Тема: {new_ticket.get(str(SUBJECT))}\nOписание: {new_ticket.get(str(BODY))}"
+    text = (
+        f"Тема: {new_ticket.get(str(SUBJECT))}\nOписание: {new_ticket.get(str(BODY))}"
+    )
 
     buttons = [[InlineKeyboardButton(text="Назад", callback_data=str(NEW_TICKET))]]
     keyboard = InlineKeyboardMarkup(buttons)
@@ -510,6 +508,7 @@ async def show_data(update: Update, context: ContextTypes.DEFAULT_TYPE) -> str:
     context.user_data[START_OVER] = True
 
     return SELECTING_FEATURE
+
 
 async def create_ticket(update: Update, context: ContextTypes.DEFAULT_TYPE) -> str:
     logging.info("def create_ticket")
@@ -522,12 +521,12 @@ async def create_ticket(update: Update, context: ContextTypes.DEFAULT_TYPE) -> s
             "Ticket": {
                 "Title": new_ticket.get(str(SUBJECT)),
                 "Queue": "spam",
-                "TypeID": 3, # Запрос на обслуживание
+                "TypeID": 3,  # Запрос на обслуживание
                 "CustomerUser": context.user_data[CUSTOMER_USER_LOGIN],
-                "StateID": 1, # new
-                "PriorityID": 3, # normal
-                "OwnerID": 1, # admin
-                "LockID": 1, # unlick
+                "StateID": 1,  # new
+                "PriorityID": 3,  # normal
+                "OwnerID": 1,  # admin
+                "LockID": 1,  # unlick
             },
             "Article": {
                 "CommunicationChannel": "Internal",
@@ -541,12 +540,15 @@ async def create_ticket(update: Update, context: ContextTypes.DEFAULT_TYPE) -> s
         },
     )
 
-
     buttons = [[InlineKeyboardButton(text="Назад", callback_data=str(END))]]
     keyboard = InlineKeyboardMarkup(buttons)
 
     await update.callback_query.answer()
-    await update.callback_query.edit_message_text(text=f"Заявка #{ticket_create.get('TicketNumber')} создана!", reply_markup=keyboard)
+    await update.callback_query.edit_message_text(
+        text=f"Заявка #{ticket_create.get('TicketNumber')} создана!",
+        reply_markup=keyboard,
+    )
+
 
 async def ask_for_input_old(update: Update, context: ContextTypes.DEFAULT_TYPE) -> str:
     logging.info("def ask_for_input")
@@ -559,6 +561,7 @@ async def ask_for_input_old(update: Update, context: ContextTypes.DEFAULT_TYPE) 
 
     return TYPING
 
+
 async def save_input_old(update: Update, context: ContextTypes.DEFAULT_TYPE) -> str:
     """Save input for feature and return to feature selection."""
     user_data = context.user_data
@@ -568,7 +571,47 @@ async def save_input_old(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
 
     return await new_ticket(update, context)
 
+
+def parse_args():
+    parser = argparse.ArgumentParser(
+        description="OTRS Telegram Bot", formatter_class=RichHelpFormatter
+    )
+
+    parser.add_argument(
+        "--debug",
+        dest="debug",
+        required=False,
+        default=False,
+        action="store_true",
+        help="enable Debug mode",
+    )
+    parser.add_argument(
+        "--path-to-log",
+        dest="log_path",
+        required=False,
+        type=str,
+        help="path to write log",
+    )
+
+    return parser.parse_args()
+
+
+def init_logging():
+    handlers = [RichHandler(rich_tracebacks=True, tracebacks_suppress=[click])]
+    if args.log_path:
+        handlers.append(logging.FileHandler(args.log_path))
+    logging.basicConfig(
+        level="INFO",
+        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+        datefmt="[%Y-%m-%d %H:%M:%S]",
+        handlers=handlers,
+    )
+    logging.getLogger("rich").setLevel("DEBUG")
+
+
 def main() -> None:
+    init_logging()
+
     application = (
         Application.builder()
         .token("5803013436:AAFvFrnlyr5P-RdGjU0Yn2dMKh6uiCNUrA8")
@@ -664,7 +707,9 @@ def main() -> None:
                 # new
                 ConversationHandler(
                     entry_points=[
-                        CallbackQueryHandler(new_ticket, pattern="^" + str(NEW_TICKET) + "$")
+                        CallbackQueryHandler(
+                            new_ticket, pattern="^" + str(NEW_TICKET) + "$"
+                        )
                     ],
                     states={
                         SELECTING_FEATURE: [
@@ -678,17 +723,29 @@ def main() -> None:
                                 + str(ATTACHMENT)
                                 + ")$",
                             ),
-                            CallbackQueryHandler(show_data, pattern="^" + str(OVERVIEW) + "$"),
-                            CallbackQueryHandler(new_ticket, pattern="^" + str(NEW_TICKET) + "$"),
-                            CallbackQueryHandler(create_ticket, pattern="^" + str(CREATE) + "$"),
+                            CallbackQueryHandler(
+                                show_data, pattern="^" + str(OVERVIEW) + "$"
+                            ),
+                            CallbackQueryHandler(
+                                new_ticket, pattern="^" + str(NEW_TICKET) + "$"
+                            ),
+                            CallbackQueryHandler(
+                                create_ticket, pattern="^" + str(CREATE) + "$"
+                            ),
                         ],
                         TYPING: [
-                            MessageHandler(filters.TEXT & ~filters.COMMAND, save_input_old),
+                            MessageHandler(
+                                filters.TEXT & ~filters.COMMAND, save_input_old
+                            ),
                         ],
                     },
                     fallbacks=[
-                        CallbackQueryHandler(show_data, pattern="^" + str(OVERVIEW) + "$"),
-                        CallbackQueryHandler(end_second_level, pattern="^" + str(END) + "$"),
+                        CallbackQueryHandler(
+                            show_data, pattern="^" + str(OVERVIEW) + "$"
+                        ),
+                        CallbackQueryHandler(
+                            end_second_level, pattern="^" + str(END) + "$"
+                        ),
                         CommandHandler("stop", stop_nested),
                     ],
                     map_to_parent={
@@ -699,7 +756,7 @@ def main() -> None:
                         # End conversation altogether
                         STOPPING: END,
                     },
-                )
+                ),
             ],
         },
         fallbacks=[
@@ -712,4 +769,5 @@ def main() -> None:
 
 
 if __name__ == "__main__":
+    args = parse_args()
     main()
