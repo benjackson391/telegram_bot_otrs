@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-import argparse, click, concurrent.futures, json, html, http, logging, requests, traceback, random, re, redis
+import argparse, click, concurrent.futures, json, html, http, logging, traceback, random, re, redis, bot_utils
 from rich_argparse import RichHelpFormatter
 from typing import Any, Dict, Tuple
 
@@ -71,27 +71,9 @@ END = ConversationHandler.END
 ) = range(0, 27)
 
 
-otrs_url = "https://otrs.efsol.ru/otrs/nph-genericinterface.pl/Webservice/bot"
-otrs_user = "telegram_bot"
-otrs_password = "GBYudLWmfGQV"
 args = {}
 
-r = redis.Redis(host='localhost', port=6379, db=0)
-
-
-def _otrs_request(path: str, json: str) -> Any:
-    logging.debug("def _otrs_request")
-
-    logging.info(f'path: {path} request: {json}')
-
-    json["UserLogin"] = otrs_user
-    json["Password"] = otrs_password
-
-    response = requests.post(f'{otrs_url}/{path}', json=json)
-    response_json = response.json()
-    logging.info(f'code: {response.status_code} raw: {response_json}')
-
-    return response_json
+r = redis.Redis(host="localhost", port=6379, db=0)
 
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> str:
@@ -102,7 +84,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> str:
         context.user_data[CONFIRMATION_CODE_STATUS] = 0
         context.user_data[CUSTOMER_USER_LOGIN] = ""
 
-        auth = _otrs_request(
+        auth = bot_utils._otrs_request(
             "auth", {"TelegramLogin": update.message.from_user.username}
         )
         if "Error" not in auth:
@@ -154,7 +136,7 @@ async def authorisation(update: Update, context: ContextTypes.DEFAULT_TYPE) -> s
     logging.info("def authorisation")
 
     context.user_data[CONFIRMATION_CODE] = random.randint(100000, 999999)
-    confirm_account = _otrs_request(
+    confirm_account = bot_utils._otrs_request(
         "confirm_account",
         {
             "Email": context.user_data[EMAIL],
@@ -201,7 +183,7 @@ async def ask_for_input(
         confirmation_code_text = "Код верный"
         context.user_data[USER_IS_AUTHORIZED] = True
 
-        confirm_account = _otrs_request(
+        confirm_account = bot_utils._otrs_request(
             "confirm_account",
             {
                 "Email": context.user_data[EMAIL],
@@ -253,7 +235,7 @@ async def save_input(update: Update, context: ContextTypes.DEFAULT_TYPE) -> str:
         return await ask_for_input(update, context, str(CONFIRMATION_CODE))
     elif context.user_data[CURRENT_STEP] == str(UPDATE_TICKET):
         logging.info(f"CONFIRMATION_CODE")
-        ticket_update = _otrs_request(
+        ticket_update = bot_utils._otrs_request(
             "update",
             {
                 "TicketID": context.user_data[TICKET_ID],
@@ -280,7 +262,9 @@ async def end_second_level(update: Update, context: ContextTypes.DEFAULT_TYPE) -
     return END
 
 
-async def show_open_tickets(update: Update, context: ContextTypes.DEFAULT_TYPE, text) -> str:
+async def show_open_tickets(
+    update: Update, context: ContextTypes.DEFAULT_TYPE, text
+) -> str:
     context.user_data[TICKETS] = collect_tickets(context.user_data[CUSTOMER_USER_LOGIN])
 
     buttons = build_ticket_buttons(context.user_data[TICKETS])
@@ -288,18 +272,18 @@ async def show_open_tickets(update: Update, context: ContextTypes.DEFAULT_TYPE, 
     keyboard = InlineKeyboardMarkup(buttons)
 
     await update.callback_query.answer()
-    await update.callback_query.edit_message_text(
-        text=text, reply_markup=keyboard
-    )
+    await update.callback_query.edit_message_text(text=text, reply_markup=keyboard)
 
     return SELECTING_FEATURE
+
 
 async def update_tickets(update: Update, context: ContextTypes.DEFAULT_TYPE) -> str:
     logging.info("def update_tickets")
 
     context.user_data[CURRENT_STEP] = str(UPDATE_TICKET)
-    return await show_open_tickets(update, context, 'Выберите заявку, которую необходимо обновить')
-
+    return await show_open_tickets(
+        update, context, "Выберите заявку, которую необходимо обновить"
+    )
 
 
 async def update_ticket(update: Update, context: ContextTypes.DEFAULT_TYPE) -> str:
@@ -340,7 +324,7 @@ async def check_tickets(update: Update, context: ContextTypes.DEFAULT_TYPE) -> s
     logging.info("def check_tickets")
 
     context.user_data[CURRENT_STEP] = str(CHECK_TICKET)
-    return await show_open_tickets(update, context, 'Открытые заявки')
+    return await show_open_tickets(update, context, "Открытые заявки")
 
 
 async def show_ticket(update: Update, context: ContextTypes.DEFAULT_TYPE) -> str:
@@ -460,7 +444,7 @@ async def create_ticket(update: Update, context: ContextTypes.DEFAULT_TYPE) -> s
 
     new_ticket = context.user_data.get(NEW_TICKET)
 
-    ticket_create = _otrs_request(
+    ticket_create = bot_utils._otrs_request(
         "create",
         {
             "Ticket": {
@@ -552,21 +536,23 @@ def init_logging():
         handlers=handlers,
     )
     logging.getLogger("rich").setLevel("DEBUG")
-
+    bot_utils._set_logging(logging, args)
 
 
 def collect_ticket(ticket_id, collected_tickets):
-    collected_tickets[ticket_id] = _otrs_request(f'ticket/{ticket_id}', {})['Ticket'][0]
+    collected_tickets[ticket_id] = bot_utils._otrs_request(f"ticket/{ticket_id}", {})[
+        "Ticket"
+    ][0]
 
 
-def collect_tickets(user_login=''):
+def collect_tickets(user_login=""):
     logging.info("def collect_tickets")
 
     if r.exists(user_login):
         return json.loads(r.get(user_login))
 
     collected_tickets = {}
-    tickets = _otrs_request(
+    tickets = bot_utils._otrs_request(
         "search",
         {
             "CustomerUserLogin": user_login,
@@ -575,12 +561,13 @@ def collect_tickets(user_login=''):
     )
 
     with concurrent.futures.ThreadPoolExecutor(max_workers=4) as executor:
-        for ticket_id in tickets.get('TicketID'):
+        for ticket_id in tickets.get("TicketID"):
             executor.submit(collect_ticket, ticket_id, collected_tickets)
 
     r.set(user_login, json.dumps(collected_tickets))
     r.expire(user_login, 60)
     return collected_tickets
+
 
 def build_ticket_buttons(tickets):
     buttons = []
@@ -599,6 +586,7 @@ def build_ticket_buttons(tickets):
 
     buttons.append([InlineKeyboardButton(text="Назад", callback_data=str(END))])
     return buttons
+
 
 def main() -> None:
     init_logging()
