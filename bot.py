@@ -1,8 +1,11 @@
 #!/usr/bin/env python
 
+
 import argparse, click, concurrent.futures, json, html, http, logging, traceback, random, re, redis, bot_utils
 from rich_argparse import RichHelpFormatter
 from typing import Any, Dict, Tuple
+
+from tgbot import create, error
 
 from telegram import __version__ as TG_VER
 
@@ -17,7 +20,7 @@ if __version_info__ < (20, 0, 0, "alpha", 1):
         f"{TG_VER} version of this example, "
         f"visit https://docs.python-telegram-bot.org/en/v{TG_VER}/examples.html"
     )
-from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update, File
 from telegram.ext import (
     Application,
     CallbackQueryHandler,
@@ -37,38 +40,35 @@ END = ConversationHandler.END
 
 (
     # states
-    USER_IS_AUTHORIZED,  # 0
-    AUTHORISATION,  # 1
-    NEW_TICKET,  # 2
-    CHECK_TICKET,  # 3
-    UPDATE_TICKET,  # 4
-    START_OVER,  # 5
-    SELECTING_ACTION,  # 6
-    CURRENT_STEP,  # 7
-    TYPING,  # 8
-    AUTHORISATION_PROCESS,  # 9
-    AUTH_PROCESS,  # 10
-    CONFIRMATION_CODE,  # 11
-    CONFIRMATION_CODE_STATUS,  # 12
-    START_OVER,  # 13
-    CUSTOMER_USER_LOGIN,  # 14
-    SELECTING_FEATURE,  # 15
-    OVERVIEW,  # 16
-    STOPPING,  # 17
-    TICKETS,  # 18
-    TICKET_ID,  # 19
-    NEW_COMMENT,  # 20
+    USER_IS_AUTHORIZED,  # 10
+    AUTHORISATION,  # 11
+    NEW_TICKET,  # 12
+    CHECK_TICKET,  # 13
+    UPDATE_TICKET,  # 14
+    START_OVER,  # 15
+    SELECTING_ACTION,  # 16
+    CURRENT_STEP,  # 17
+    TYPING,  # 18
+    AUTHORISATION_PROCESS,  # 19
+    AUTH_PROCESS,  # 20
+    CONFIRMATION_CODE,  # 21
+    CONFIRMATION_CODE_STATUS,  # 22
+    START_OVER,  # 23
+    CUSTOMER_USER_LOGIN,  # 24
+    SELECTING_FEATURE,  # 25
+    OVERVIEW,  # 26
+    STOPPING,  # 27
+    TICKETS,  # 28
+    TICKET_ID,  # 29
+    NEW_COMMENT,  # 30
     # new_ticket
-    SUBJECT,  # 21
-    BODY,  # 22
-    ATTACHMENT,  # 23
-    CREATE,  # 24
     # attributes
-    EMAIL,
+    EMAIL,  # 31
     # errors
-    EMAIL_NOT_FOUND
+    EMAIL_NOT_FOUND,  # 32
+    UPLOAD_ATTACHMENT,  # 33
     # ) = map(chr, range(0, 10))
-) = range(0, 27)
+) = range(10, 34)
 
 
 args = {}
@@ -353,53 +353,6 @@ async def show_ticket(update: Update, context: ContextTypes.DEFAULT_TYPE) -> str
     return SELECTING_FEATURE
 
 
-async def new_ticket(update: Update, context: ContextTypes.DEFAULT_TYPE) -> str:
-    logging.info("def new_ticket")
-
-    buttons = [
-        [
-            InlineKeyboardButton(text="Тема", callback_data=str(SUBJECT)),
-        ],
-        [
-            InlineKeyboardButton(text="Описание", callback_data=str(BODY)),
-            # ],[
-            #     InlineKeyboardButton(text="Файл", callback_data=str(ATTACHMENT)),
-        ],
-        [
-            InlineKeyboardButton(text="Обзор", callback_data=str(OVERVIEW)),
-        ],
-        [
-            InlineKeyboardButton(text="Создать", callback_data=str(CREATE)),
-        ],
-        [
-            InlineKeyboardButton(text="Назад", callback_data=str(END)),
-        ],
-    ]
-    keyboard = InlineKeyboardMarkup(buttons)
-
-    # If we collect features for a new person, clear the cache and save the gender
-    if not context.user_data.get(START_OVER):
-        context.user_data[NEW_TICKET] = {}
-        text = "Please select a feature to update."
-
-        await update.callback_query.answer()
-        await update.callback_query.edit_message_text(text=text, reply_markup=keyboard)
-    # But after we do that, we need to send a new message
-    else:
-        text = "Got it! Please select a feature to update."
-
-        if update.message:
-            await update.message.reply_text(text=text, reply_markup=keyboard)
-
-        if update.callback_query:
-            await update.callback_query.edit_message_text(
-                text=text, reply_markup=keyboard
-            )
-
-    context.user_data[START_OVER] = False
-    return SELECTING_FEATURE
-
-
 async def end_second_level(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     context.user_data[START_OVER] = True
     await start(update, context)
@@ -425,9 +378,7 @@ async def show_data(update: Update, context: ContextTypes.DEFAULT_TYPE) -> str:
 
     new_ticket = context.user_data.get(NEW_TICKET)
 
-    text = (
-        f"Тема: {new_ticket.get(str(SUBJECT))}\nOписание: {new_ticket.get(str(BODY))}"
-    )
+    text = f"Тема: {new_ticket.get(str(create.SUBJECT))}\nOписание: {new_ticket.get(str(create.BODY))}"
 
     buttons = [[InlineKeyboardButton(text="Назад", callback_data=str(NEW_TICKET))]]
     keyboard = InlineKeyboardMarkup(buttons)
@@ -437,46 +388,6 @@ async def show_data(update: Update, context: ContextTypes.DEFAULT_TYPE) -> str:
     context.user_data[START_OVER] = True
 
     return SELECTING_FEATURE
-
-
-async def create_ticket(update: Update, context: ContextTypes.DEFAULT_TYPE) -> str:
-    logging.info("def create_ticket")
-
-    new_ticket = context.user_data.get(NEW_TICKET)
-
-    ticket_create = bot_utils._otrs_request(
-        "create",
-        {
-            "Ticket": {
-                "Title": new_ticket.get(str(SUBJECT)),
-                "Queue": "spam",
-                "TypeID": 3,  # Запрос на обслуживание
-                "CustomerUser": context.user_data[CUSTOMER_USER_LOGIN],
-                "StateID": 1,  # new
-                "PriorityID": 3,  # normal
-                "OwnerID": 1,  # admin
-                "LockID": 1,  # unlick
-            },
-            "Article": {
-                "CommunicationChannel": "Internal",
-                "SenderType": "customer",
-                "Charset": "utf-8",
-                "MimeType": "text/plain",
-                "From": context.user_data[CUSTOMER_USER_LOGIN],
-                "Subject": new_ticket.get(str(SUBJECT)),
-                "Body": new_ticket.get(str(BODY)),
-            },
-        },
-    )
-
-    buttons = [[InlineKeyboardButton(text="Назад", callback_data=str(END))]]
-    keyboard = InlineKeyboardMarkup(buttons)
-
-    await update.callback_query.answer()
-    await update.callback_query.edit_message_text(
-        text=f"Заявка #{ticket_create.get('TicketNumber')} создана!",
-        reply_markup=keyboard,
-    )
 
 
 async def ask_for_input_old(update: Update, context: ContextTypes.DEFAULT_TYPE) -> str:
@@ -687,45 +598,47 @@ def main() -> None:
                 ConversationHandler(
                     entry_points=[
                         CallbackQueryHandler(
-                            new_ticket, pattern="^" + str(NEW_TICKET) + "$"
+                            create.new_ticket,
+                            pattern="^" + str(NEW_TICKET) + "$",
                         )
                     ],
                     states={
-                        SELECTING_FEATURE: [
+                        create.SUBJECT: [
+                            MessageHandler(filters.TEXT, create.subject_handler),
+                        ],
+                        create.BODY: [
+                            MessageHandler(filters.TEXT, create.body_handler),
+                        ],
+                        create.ATTACHMENT: [
                             CallbackQueryHandler(
-                                ask_for_input_old,
-                                pattern="^(?:"
-                                + str(SUBJECT)
-                                + "|^"
-                                + str(BODY)
-                                + "|"
-                                + str(ATTACHMENT)
-                                + ")$",
+                                create.attachment_handler,
+                                pattern="^" + str(create.UPLOAD) + "$",
                             ),
                             CallbackQueryHandler(
-                                show_data, pattern="^" + str(OVERVIEW) + "$"
-                            ),
-                            CallbackQueryHandler(
-                                new_ticket, pattern="^" + str(NEW_TICKET) + "$"
-                            ),
-                            CallbackQueryHandler(
-                                create_ticket, pattern="^" + str(CREATE) + "$"
+                                create.create, pattern="^" + str(create.CREATE) + "$"
                             ),
                         ],
-                        TYPING: [
-                            MessageHandler(
-                                filters.TEXT & ~filters.COMMAND, save_input_old
+                        create.UPLOAD: [
+                            MessageHandler(filters.Document.ALL, create.upload),
+                        ],
+                        create.CREATE: [
+                            CallbackQueryHandler(
+                                create.create, pattern="^" + str(create.CREATE) + "$"
+                            ),
+                            CallbackQueryHandler(
+                                end_second_level, pattern="^" + str(ConversationHandler.END) + "$"
                             ),
                         ],
+                        ConversationHandler.END: [],
                     },
                     fallbacks=[
-                        CallbackQueryHandler(
-                            show_data, pattern="^" + str(OVERVIEW) + "$"
-                        ),
+                        # CallbackQueryHandler(
+                        #     show_data, pattern="^" + str(OVERVIEW) + "$"
+                        # ),
                         CallbackQueryHandler(
                             end_second_level, pattern="^" + str(END) + "$"
                         ),
-                        CommandHandler("stop", stop_nested),
+                        # CommandHandler("stop", stop_nested),
                     ],
                     map_to_parent={
                         # After showing data return to top level menu
@@ -736,7 +649,7 @@ def main() -> None:
                         STOPPING: END,
                     },
                 ),
-            ],
+            ]
         },
         fallbacks=[
             CommandHandler("stop", stop),
@@ -744,6 +657,7 @@ def main() -> None:
     )
 
     application.add_handler(conv_handler)
+    application.add_error_handler(error.error_handler)
     application.run_polling()
 
 
