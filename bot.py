@@ -499,6 +499,11 @@ def build_ticket_buttons(tickets):
     return buttons
 
 
+def echo_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    update.message.reply_text(
+        f'update: {update}',
+    )
+
 def main() -> None:
     init_logging()
 
@@ -617,28 +622,24 @@ def main() -> None:
                             CallbackQueryHandler(
                                 create.create, pattern="^" + str(create.CREATE) + "$"
                             ),
+                            # MessageHandler(filters.ALL, create.create),
                         ],
                         create.UPLOAD: [
                             MessageHandler(filters.Document.ALL, create.upload),
                         ],
-                        create.CREATE: [
-                            CallbackQueryHandler(
-                                create.create, pattern="^" + str(create.CREATE) + "$"
-                            ),
+                        # create.CREATE: [
+                        #     MessageHandler(filters.ALL, create.create),
+                        # ],
+                        ConversationHandler.END: [
                             CallbackQueryHandler(
                                 end_second_level, pattern="^" + str(ConversationHandler.END) + "$"
                             ),
                         ],
-                        ConversationHandler.END: [],
                     },
                     fallbacks=[
-                        # CallbackQueryHandler(
-                        #     show_data, pattern="^" + str(OVERVIEW) + "$"
-                        # ),
                         CallbackQueryHandler(
                             end_second_level, pattern="^" + str(END) + "$"
                         ),
-                        # CommandHandler("stop", stop_nested),
                     ],
                     map_to_parent={
                         # After showing data return to top level menu
@@ -657,6 +658,7 @@ def main() -> None:
     )
 
     application.add_handler(conv_handler)
+    application.add_handler(MessageHandler(filters.ALL, echo_handler))
     application.add_error_handler(error.error_handler)
     application.run_polling()
 

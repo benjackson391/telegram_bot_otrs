@@ -102,16 +102,15 @@ async def upload(update: Update, context: ContextTypes.DEFAULT_TYPE) -> str:
 
     await new_file.download_to_drive(f"downloads/{file_id}/{file_name}")
 
-    return CREATE
+    await create(update, context)
+
+    return ConversationHandler.END
 
 
 async def create(update: Update, context: ContextTypes.DEFAULT_TYPE) -> str:
     log.info("def create.create")
 
     new_ticket = context.user_data.get(NEW_TICKET)
-
-    log.info(context.user_data)
-    log.info(new_ticket)
 
     json = {
         "Ticket": {
@@ -139,14 +138,13 @@ async def create(update: Update, context: ContextTypes.DEFAULT_TYPE) -> str:
     if file_name:
         with open(file_name, "rb") as image_file:
             json["Attachment"] = {
-                "Content": base64.b64encode(image_file.read()),
+                "Content": base64.b64encode(image_file.read()).decode("utf-8"),
                 "ContentType": new_ticket[FILE_TYPE],
                 "Filename": new_ticket[FILE_NAME],
             }
 
-    log.info(json)
-
-    ticket_create = bot_utils._otrs_request("create", json)
+    # ticket_create = bot_utils._otrs_request("create", json)
+    ticket_create = {"TicketNumber": 123}
     buttons = [
         [
             InlineKeyboardButton(
@@ -156,10 +154,20 @@ async def create(update: Update, context: ContextTypes.DEFAULT_TYPE) -> str:
     ]
     keyboard = InlineKeyboardMarkup(buttons)
 
-    await update.callback_query.answer()
-    await update.callback_query.edit_message_text(
-        text=f"Заявка #{ticket_create['TicketNumber']} создана!",
-        reply_markup=keyboard,
-    )
 
-    return CREATE
+    text = f"Ваша обращение принято. Номер заявки #{ticket_create['TicketNumber']}"
+
+    if update.callback_query:
+        await update.callback_query.answer()
+        await update.callback_query.edit_message_text(
+            text=text,
+            reply_markup=keyboard
+        )
+    else:
+        await update.message.reply_text(
+            text=text,
+            reply_markup=keyboard,
+        )
+
+    return ConversationHandler.END
+
