@@ -629,14 +629,7 @@ def main() -> None:
                         ],
                     },
                     fallbacks=[],
-                    map_to_parent={
-                        # After showing data return to top level menu
-                        OVERVIEW: OVERVIEW,
-                        # Return to top level menu
-                        END: SELECTING_ACTION,
-                        # End conversation altogether
-                        STOPPING: END,
-                    },
+                    map_to_parent={},
                 ),
             ]
         },
