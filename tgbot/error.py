@@ -3,10 +3,9 @@ import json
 import logging
 import traceback
 
+from tgbot import constants
 from telegram import Update
 from telegram.ext import CallbackContext
-
-ADMIN_IDS = [175214250]
 
 
 class ButtonError(Exception):
@@ -28,5 +27,5 @@ async def error_handler(update: object, context: CallbackContext) -> None:
         f"<pre>context.user_data = {html.escape(str(context.user_data))}</pre>\n\n"
         f"<pre>{html.escape(tb_string)}</pre>"
     )
-    for admin in ADMIN_IDS:
+    for admin in constants.ADMIN_IDS:
         await context.bot.send_message(chat_id=admin, text=message, parse_mode="HTML")

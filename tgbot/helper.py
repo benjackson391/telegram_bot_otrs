@@ -2,6 +2,7 @@ import json, logging, requests, redis, concurrent.futures
 from typing import Any, Dict, Tuple
 from telegram import InlineKeyboardButton
 from telegram.ext import ConversationHandler
+from tgbot import constants
 
 log = logging.getLogger(__name__)
 r = redis.Redis(host="localhost", port=6379, db=0)
@@ -11,10 +12,8 @@ otrs_user = "telegram_bot"
 otrs_password = "GBYudLWmfGQV"
 
 
-def get_return_button(end=ConversationHandler.END):
-    return [
-        InlineKeyboardButton(text="Назад", callback_data=str(end))
-    ]
+def get_return_button(end=constants.END):
+    return [InlineKeyboardButton(text="Назад", callback_data=str(end))]
 
 
 def _otrs_request(path: str, json: str) -> Any:
@@ -80,7 +79,5 @@ def build_ticket_buttons(tickets):
             ]
         )
 
-    buttons.append(
-        [InlineKeyboardButton(text="Назад", callback_data=str(ConversationHandler.END))]
-    )
+    buttons.append(get_return_button())
     return buttons

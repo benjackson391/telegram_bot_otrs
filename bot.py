@@ -5,7 +5,7 @@ import argparse, click, concurrent.futures, json, html, http, logging, traceback
 from rich_argparse import RichHelpFormatter
 from typing import Any, Dict, Tuple
 
-from tgbot import create, check, error, helper
+from tgbot import common, constants, create, check, error, helper
 
 from telegram import __version__ as TG_VER
 
@@ -36,122 +36,33 @@ from rich.logging import RichHandler
 
 install(show_locals=True)
 
-END = ConversationHandler.END
-
-(
-    # states
-    USER_IS_AUTHORIZED,  # 11
-    AUTHORISATION,  # 12
-    NEW_TICKET,  # 13
-    CHECK_TICKET,  # 14
-    UPDATE_TICKET,  # 15
-    START_OVER,  # 16
-    SELECTING_ACTION,  # 17
-    CURRENT_STEP,  # 18
-    TYPING,  # 19
-    AUTHORISATION_PROCESS,  # 20
-    AUTH_PROCESS,  # 21
-    CONFIRMATION_CODE,  # 22
-    CONFIRMATION_CODE_STATUS,  # 23
-    START_OVER,  # 24
-    CUSTOMER_USER_LOGIN,  # 25
-    SELECTING_FEATURE,  # 26
-    OVERVIEW,  # 27
-    STOPPING,  # 28
-    TICKETS,  # 29
-    TICKET_ID,  # 30
-    NEW_COMMENT,  # 31
-    # new_ticket
-    # attributes
-    EMAIL,  # 32
-    # errors
-    EMAIL_NOT_FOUND,  # 33
-    UPLOAD_ATTACHMENT,  # 34
-    # ) = map(chr, range(0, 10))
-) = range(11, 35)
-
-
 args = {}
-
-
-async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> str:
-    logging.info("def start")
-
-    if not context.user_data.get(USER_IS_AUTHORIZED):
-        context.user_data[USER_IS_AUTHORIZED] = False
-        context.user_data[CONFIRMATION_CODE_STATUS] = 0
-        context.user_data[CUSTOMER_USER_LOGIN] = ""
-
-        auth = helper._otrs_request(
-            "auth", {"TelegramLogin": update.message.from_user.username}
-        )
-        if "Error" not in auth:
-            context.user_data[USER_IS_AUTHORIZED] = True
-            context.user_data[CUSTOMER_USER_LOGIN] = auth["CustomerUserLogin"]
-
-    context.user_data[EMAIL_NOT_FOUND] = False
-
-    text = (
-        "Вы можете создать, обновить или проверить статус вашей заявки. "
-        "Для остановки бота просто напишите /stop"
-    )
-
-    not_auth_buttons = [
-        InlineKeyboardButton(text="Авторизоваться", callback_data=str(AUTHORISATION)),
-    ]
-
-    auth_buttons = [
-        InlineKeyboardButton(text="Новая заявка", callback_data=str(NEW_TICKET)),
-        InlineKeyboardButton(text="Проверить статус", callback_data=str(CHECK_TICKET)),
-        InlineKeyboardButton(text="Обновить заявку", callback_data=str(UPDATE_TICKET)),
-    ]
-
-    keyboard = InlineKeyboardMarkup(
-        list(
-            map(
-                lambda b: [b],
-                auth_buttons
-                if context.user_data[USER_IS_AUTHORIZED]
-                else not_auth_buttons,
-            )
-        )
-    )
-
-    if context.user_data.get(START_OVER):
-        await update.callback_query.answer()
-        await update.callback_query.edit_message_text(text=text, reply_markup=keyboard)
-    else:
-        await update.message.reply_text(
-            "Добро пожаловать в систему постановки заявок EFSOL"
-        )
-        await update.message.reply_text(text=text, reply_markup=keyboard)
-
-    context.user_data[START_OVER] = False
-    return SELECTING_ACTION
 
 
 async def authorisation(update: Update, context: ContextTypes.DEFAULT_TYPE) -> str:
     logging.info("def authorisation")
 
-    context.user_data[CONFIRMATION_CODE] = random.randint(100000, 999999)
+    context.user_data[constants.CONFIRMATION_CODE] = random.randint(100000, 999999)
     confirm_account = helper._otrs_request(
         "confirm_account",
         {
-            "Email": context.user_data[EMAIL],
-            "Code": context.user_data[CONFIRMATION_CODE],
+            "Email": context.user_data[constants.EMAIL],
+            "Code": context.user_data[constants.CONFIRMATION_CODE],
         },
     )
 
     logging.info(confirm_account)
 
     if not bool(confirm_account["data"]):
-        context.user_data[EMAIL_NOT_FOUND] = True
-        context.user_data[CURRENT_STEP] = str(AUTHORISATION)
+        context.user_data[constants.EMAIL_NOT_FOUND] = True
+        context.user_data[constants.CURRENT_STEP] = str(constants.AUTHORISATION)
     else:
-        context.user_data[EMAIL_NOT_FOUND] = False
-        context.user_data[CURRENT_STEP] = str(CONFIRMATION_CODE)
+        context.user_data[constants.EMAIL_NOT_FOUND] = False
+        context.user_data[constants.CURRENT_STEP] = str(constants.CONFIRMATION_CODE)
 
-    return await ask_for_input(update, context, context.user_data[CURRENT_STEP])
+    return await ask_for_input(
+        update, context, context.user_data[constants.CURRENT_STEP]
+    )
 
 
 async def ask_for_input(
@@ -166,45 +77,47 @@ async def ask_for_input(
 
     # update ticket
     if bool(re.match("^NEW_COMMENT_\d+$", current_step)):
-        current_step = str(UPDATE_TICKET)
-        context.user_data[TICKET_ID] = update.callback_query.data.split("_")[-1]
+        current_step = str(constants.UPDATE_TICKET)
+        context.user_data[constants.TICKET_ID] = update.callback_query.data.split("_")[
+            -1
+        ]
 
-    context.user_data[CURRENT_STEP] = current_step
+    context.user_data[constants.CURRENT_STEP] = current_step
 
-    if context.user_data[CONFIRMATION_CODE_STATUS] == 0:
+    if context.user_data[constants.CONFIRMATION_CODE_STATUS] == 0:
         confirmation_code_text = (
             "Для подтверждения адреса электронной почты введите код из письма"
         )
-    elif context.user_data[CONFIRMATION_CODE_STATUS] == 1:
+    elif context.user_data[constants.CONFIRMATION_CODE_STATUS] == 1:
         confirmation_code_text = "Код неверный, попробуйте еще раз"
     else:
         confirmation_code_text = "Код верный"
-        context.user_data[USER_IS_AUTHORIZED] = True
+        context.user_data[constants.USER_IS_AUTHORIZED] = True
 
         confirm_account = helper._otrs_request(
             "confirm_account",
             {
-                "Email": context.user_data[EMAIL],
+                "Email": context.user_data[constants.EMAIL],
                 "TelegramLogin": update.message.from_user.username,
             },
         )
 
-        await start(update, context)
-        return END
+        await common.start(update, context)
+        return constants.END
 
     text_map = {
         str(
-            AUTHORISATION
+            constants.AUTHORISATION
         ): f"Введите свой адрес электронный почты, который зарегистрирован в OTRS",
-        str(CONFIRMATION_CODE): confirmation_code_text,
-        str(UPDATE_TICKET): f"Введите комментарий",
+        str(constants.CONFIRMATION_CODE): confirmation_code_text,
+        str(constants.UPDATE_TICKET): f"Введите комментарий",
     }
 
     text = text_map[current_step]
 
-    if context.user_data[EMAIL_NOT_FOUND]:
-        text = f"Адрес {context.user_data[EMAIL]} не найден в OTRS, попробуйте другой адрес"
-        context.user_data[EMAIL_NOT_FOUND] = False
+    if context.user_data[constants.EMAIL_NOT_FOUND]:
+        text = f"Адрес {context.user_data[constants.EMAIL]} не найден в OTRS, попробуйте другой адрес"
+        context.user_data[constants.EMAIL_NOT_FOUND] = False
 
     if update.callback_query:
         await update.callback_query.answer()
@@ -212,7 +125,7 @@ async def ask_for_input(
     else:
         await update.message.reply_text(text=text)
 
-    return TYPING
+    return constants.TYPING
 
 
 async def save_input(update: Update, context: ContextTypes.DEFAULT_TYPE) -> str:
@@ -221,49 +134,43 @@ async def save_input(update: Update, context: ContextTypes.DEFAULT_TYPE) -> str:
 
     input_text = update.message.text
 
-    if context.user_data[CURRENT_STEP] == str(AUTHORISATION):
+    if context.user_data[constants.CURRENT_STEP] == str(constants.AUTHORISATION):
         logging.info("AUTHORISATION")
-        context.user_data[EMAIL] = input_text
+        context.user_data[constants.EMAIL] = input_text
         return await authorisation(update, context)
-    elif context.user_data[CURRENT_STEP] == str(CONFIRMATION_CODE):
+    elif context.user_data[constants.CURRENT_STEP] == str(constants.CONFIRMATION_CODE):
         logging.info(f"CONFIRMATION_CODE")
-        context.user_data[CONFIRMATION_CODE_STATUS] = (
-            2 if int(context.user_data[CONFIRMATION_CODE]) == int(input_text) else 1
+        context.user_data[constants.CONFIRMATION_CODE_STATUS] = (
+            2
+            if int(context.user_data[constants.CONFIRMATION_CODE]) == int(input_text)
+            else 1
         )
-        return await ask_for_input(update, context, str(CONFIRMATION_CODE))
-    elif context.user_data[CURRENT_STEP] == str(UPDATE_TICKET):
+        return await ask_for_input(update, context, str(constants.CONFIRMATION_CODE))
+    elif context.user_data[constants.CURRENT_STEP] == str(constants.UPDATE_TICKET):
         logging.info(f"CONFIRMATION_CODE")
         ticket_update = helper._otrs_request(
             "update",
             {
-                "TicketID": context.user_data[TICKET_ID],
+                "TicketID": context.user_data[constants.TICKET_ID],
                 "Article": {
                     "CommunicationChannel": "Internal",
                     "SenderType": "customer",
                     "Charset": "utf-8",
                     "MimeType": "text/plain",
-                    "From": context.user_data[CUSTOMER_USER_LOGIN],
+                    "From": context.user_data[constants.CUSTOMER_USER_LOGIN],
                     "Subject": "Telegram message",
                     "Body": input_text,
                 },
             },
         )
-        context.user_data[START_OVER] = False
-        return await start(update, context)
-
-
-async def end_second_level(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    logging.info("def end_second_level")
-    context.user_data[START_OVER] = True
-    await start(update, context)
-
-    return END
+        context.user_data[constants.START_OVER] = False
+        return await common.start(update, context)
 
 
 async def update_tickets(update: Update, context: ContextTypes.DEFAULT_TYPE) -> str:
     logging.info("def update_tickets")
 
-    context.user_data[CURRENT_STEP] = str(UPDATE_TICKET)
+    context.user_data[constants.CURRENT_STEP] = str(constants.UPDATE_TICKET)
     return await check.show_open_tickets(
         update, context, "Выберите заявку, которую необходимо обновить"
     )
@@ -272,8 +179,10 @@ async def update_tickets(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
 async def update_ticket(update: Update, context: ContextTypes.DEFAULT_TYPE) -> str:
     logging.info("def update_ticket")
 
-    context.user_data[TICKET_ID] = update.callback_query.data.split("_")[-1]
-    ticket = context.user_data.get(TICKETS)[context.user_data[TICKET_ID]]
+    context.user_data[constants.TICKET_ID] = update.callback_query.data.split("_")[-1]
+    ticket = context.user_data.get(constants.TICKETS)[
+        context.user_data[constants.TICKET_ID]
+    ]
 
     text = f"""
         Номер заявки: #{ticket["TicketNumber"]}
@@ -289,77 +198,74 @@ async def update_ticket(update: Update, context: ContextTypes.DEFAULT_TYPE) -> s
         [
             InlineKeyboardButton(
                 text="Добавьте комментарий",
-                callback_data=f"NEW_COMMENT_{context.user_data[TICKET_ID]}",
+                callback_data=f"NEW_COMMENT_{context.user_data[constants.TICKET_ID]}",
             )
         ],
         # [InlineKeyboardButton(text="Прикрепить файл", callback_data=str(NEW_TICKET))],
-        [InlineKeyboardButton(text="Назад", callback_data=str(NEW_TICKET))],
+        [InlineKeyboardButton(text="Назад", callback_data=str(constants.NEW_TICKET))],
     ]
     keyboard = InlineKeyboardMarkup(buttons)
 
     await update.callback_query.answer()
     await update.callback_query.edit_message_text(text=text, reply_markup=keyboard)
 
-    return SELECTING_FEATURE
-
-
-async def end_second_level(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    context.user_data[START_OVER] = True
-    await start(update, context)
-
-    return END
+    return constants.SELECTING_FEATURE
 
 
 async def stop_nested(update: Update, context: ContextTypes.DEFAULT_TYPE) -> str:
     await update.message.reply_text("До встречи.")
 
-    return STOPPING
+    return constants.STOPPING
 
 
 async def stop(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     await update.message.reply_text("До встречи.")
 
-    return END
+    return constants.END
 
 
 async def show_data(update: Update, context: ContextTypes.DEFAULT_TYPE) -> str:
     logging.info("def show_data")
     logging.info(context.user_data)
 
-    new_ticket = context.user_data.get(NEW_TICKET)
+    new_ticket = context.user_data.get(constants.NEW_TICKET)
 
-    text = f"Тема: {new_ticket.get(str(create.SUBJECT))}\nOписание: {new_ticket.get(str(create.BODY))}"
+    text = f"Тема: {new_ticket.get(str(constants.SUBJECT))}\nOписание: {new_ticket.get(str(constants.BODY))}"
 
-    buttons = [[InlineKeyboardButton(text="Назад", callback_data=str(NEW_TICKET))]]
+    buttons = [
+        [InlineKeyboardButton(text="Назад", callback_data=str(constants.NEW_TICKET))]
+    ]
     keyboard = InlineKeyboardMarkup(buttons)
 
     await update.callback_query.answer()
     await update.callback_query.edit_message_text(text=text, reply_markup=keyboard)
-    context.user_data[START_OVER] = True
+    context.user_data[constants.START_OVER] = True
 
-    return SELECTING_FEATURE
+    return constants.SELECTING_FEATURE
 
 
 async def ask_for_input_old(update: Update, context: ContextTypes.DEFAULT_TYPE) -> str:
     logging.info("def ask_for_input")
 
-    context.user_data[CURRENT_STEP] = update.callback_query.data
+    context.user_data[constants.CURRENT_STEP] = update.callback_query.data
     text = f"Введите текст"
 
     await update.callback_query.answer()
     await update.callback_query.edit_message_text(text=text)
 
-    return TYPING
+    return constants.TYPING
 
 
 async def save_input_old(update: Update, context: ContextTypes.DEFAULT_TYPE) -> str:
     """Save input for feature and return to feature selection."""
     user_data = context.user_data
-    user_data[NEW_TICKET][context.user_data[CURRENT_STEP]] = update.message.text
+    user_data[constants.NEW_TICKET][
+        context.user_data[constants.CURRENT_STEP]
+    ] = update.message.text
 
-    user_data[START_OVER] = True
+    user_data[constants.START_OVER] = True
 
-    return await new_ticket(update, context)
+    return await create.new_ticket(update, context)
 
 
 def parse_args():
@@ -409,18 +315,19 @@ def main() -> None:
     )
 
     conv_handler = ConversationHandler(
-        entry_points=[CommandHandler("start", start)],
+        entry_points=[CommandHandler("start", common.start)],
         states={
-            SELECTING_ACTION: [
+            constants.SELECTING_ACTION: [
                 # auth
                 ConversationHandler(
                     entry_points=[
                         CallbackQueryHandler(
-                            ask_for_input, pattern="^" + str(AUTHORISATION) + "$"
+                            ask_for_input,
+                            pattern="^" + str(constants.AUTHORISATION) + "$",
                         )
                     ],
                     states={
-                        TYPING: [
+                        constants.TYPING: [
                             MessageHandler(filters.TEXT & ~filters.COMMAND, save_input),
                         ],
                     },
@@ -428,20 +335,21 @@ def main() -> None:
                         CommandHandler("stop", stop_nested),
                     ],
                     map_to_parent={
-                        OVERVIEW: OVERVIEW,
-                        END: SELECTING_ACTION,
-                        STOPPING: END,
+                        # OVERVIEW: OVERVIEW,
+                        # END: SELECTING_ACTION,
+                        # STOPPING: END,
                     },
                 ),
                 # update
                 ConversationHandler(
                     entry_points=[
                         CallbackQueryHandler(
-                            update_tickets, pattern="^" + str(UPDATE_TICKET) + "$"
+                            update_tickets,
+                            pattern="^" + str(constants.UPDATE_TICKET) + "$",
                         )
                     ],
                     states={
-                        SELECTING_FEATURE: [
+                        constants.SELECTING_FEATURE: [
                             CallbackQueryHandler(
                                 update_ticket,
                                 pattern="^TICKET_\d+$",
@@ -451,10 +359,11 @@ def main() -> None:
                                 pattern="^NEW_COMMENT_\d+$",
                             ),
                             CallbackQueryHandler(
-                                end_second_level, pattern="^" + str(END) + "$"
+                                common.end_second_level,
+                                pattern="^" + str(constants.END) + "$",
                             ),
                         ],
-                        TYPING: [
+                        constants.TYPING: [
                             MessageHandler(filters.TEXT & ~filters.COMMAND, save_input),
                         ],
                     },
@@ -462,26 +371,28 @@ def main() -> None:
                         CommandHandler("stop", stop_nested),
                     ],
                     map_to_parent={
-                        OVERVIEW: OVERVIEW,
-                        END: SELECTING_ACTION,
-                        STOPPING: END,
+                        # OVERVIEW: OVERVIEW,
+                        # END: SELECTING_ACTION,
+                        # STOPPING: END,
                     },
                 ),
                 # check
                 ConversationHandler(
                     entry_points=[
                         CallbackQueryHandler(
-                            check.check_tickets, pattern="^" + str(CHECK_TICKET) + "$"
+                            check.check_tickets,
+                            pattern="^" + str(constants.CHECK_TICKET) + "$",
                         )
                     ],
                     states={
-                        SELECTING_FEATURE: [
+                        constants.SELECTING_FEATURE: [
                             CallbackQueryHandler(
                                 check.show_ticket,
                                 pattern="^TICKET_\d+$",
                             ),
                             CallbackQueryHandler(
-                                end_second_level, pattern="^" + str(END) + "$"
+                                common.end_second_level,
+                                pattern="^" + str(constants.END) + "$",
                             ),
                         ]
                     },
@@ -489,9 +400,9 @@ def main() -> None:
                         CommandHandler("stop", stop_nested),
                     ],
                     map_to_parent={
-                        OVERVIEW: OVERVIEW,
-                        END: SELECTING_ACTION,
-                        STOPPING: END,
+                        # OVERVIEW: OVERVIEW,
+                        # END: SELECTING_ACTION,
+                        # STOPPING: END,
                     },
                 ),
                 # new
@@ -499,32 +410,34 @@ def main() -> None:
                     entry_points=[
                         CallbackQueryHandler(
                             create.new_ticket,
-                            pattern="^" + str(NEW_TICKET) + "$",
+                            pattern="^" + str(constants.NEW_TICKET) + "$",
                         )
                     ],
                     states={
-                        create.SUBJECT: [
+                        constants.SUBJECT: [
                             MessageHandler(filters.TEXT, create.subject_handler),
                             CallbackQueryHandler(
-                                end_second_level, pattern="^" + str(END) + "$"
+                                common.end_second_level,
+                                pattern="^" + str(constants.END) + "$",
                             ),
                         ],
-                        create.BODY: [
+                        constants.BODY: [
                             MessageHandler(filters.TEXT, create.body_handler),
                         ],
-                        create.ATTACHMENT: [
+                        constants.ATTACHMENT: [
                             CallbackQueryHandler(
                                 create.attachment_handler,
-                                pattern="^" + str(create.UPLOAD) + "$",
+                                pattern="^" + str(constants.UPLOAD) + "$",
                             ),
                             CallbackQueryHandler(
-                                create.create, pattern="^" + str(create.CREATE) + "$"
+                                create.create, pattern="^" + str(constants.CREATE) + "$"
                             ),
                             CallbackQueryHandler(
-                                end_second_level, pattern="^" + str(END) + "$"
+                                common.end_second_level,
+                                pattern="^" + str(constants.END) + "$",
                             ),
                         ],
-                        create.CREATE_WITH_ATTACHMENT: [
+                        constants.CREATE_WITH_ATTACHMENT: [
                             MessageHandler(filters.ALL, create.create),
                         ],
                     },

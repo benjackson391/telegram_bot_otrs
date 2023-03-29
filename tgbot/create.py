@@ -1,27 +1,8 @@
 import base64, logging, io, os, sys
 
-from tgbot import helper
+from tgbot import helper, constants
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import ContextTypes
-
-(
-    NEW_TICKET,  # 0
-    SUBJECT,  # 1
-    BODY,  # 2
-    ATTACHMENT,  # 3
-    UPLOAD,  # 4
-    FINISH,  # 5
-    CREATE,  # 6
-    CREATE_WITH_ATTACHMENT,  # 7
-    FILE_PATH,  # 8
-    FILE_NAME,  # 9
-    FILE_TYPE,  # 10
-) = range(0, 11)
-
-OVERVIEW = 25
-STOPPING = 26
-SELECTING_ACTION = 15
-CUSTOMER_USER_LOGIN = 25
 
 log = logging.getLogger(__name__)
 
@@ -31,7 +12,7 @@ buffer = io.BytesIO()
 async def new_ticket(update: Update, context: ContextTypes.DEFAULT_TYPE) -> str:
     log.info("def create.new_ticket")
 
-    context.user_data[NEW_TICKET] = {}
+    context.user_data[constants.NEW_TICKET] = {}
 
     keyboard = InlineKeyboardMarkup([helper.get_return_button])
 
@@ -40,27 +21,27 @@ async def new_ticket(update: Update, context: ContextTypes.DEFAULT_TYPE) -> str:
         text="Введите название заявки",
         reply_markup=keyboard,
     )
-    return SUBJECT
+    return constants.SUBJECT
 
 
 async def subject_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> str:
     log.info("def create.subject_handler")
 
-    context.user_data[NEW_TICKET][SUBJECT] = update.message.text
+    context.user_data[constants.NEW_TICKET][constants.SUBJECT] = update.message.text
 
     await update.message.reply_text(text="Введите описание заявки")
 
-    return BODY
+    return constants.BODY
 
 
 async def body_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> str:
     log.info("def create.body_handler")
-    context.user_data[NEW_TICKET][BODY] = update.message.text
+    context.user_data[constants.NEW_TICKET][constants.BODY] = update.message.text
 
     buttons = [
         [
-            InlineKeyboardButton(text="Да", callback_data=str(UPLOAD)),
-            InlineKeyboardButton(text="Нет", callback_data=str(CREATE)),
+            InlineKeyboardButton(text="Да", callback_data=str(constants.UPLOAD)),
+            InlineKeyboardButton(text="Нет", callback_data=str(constants.CREATE)),
         ],
     ]
     keyboard = InlineKeyboardMarkup(buttons)
@@ -69,7 +50,7 @@ async def body_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> st
         text="Прикрепить файл?",
         reply_markup=keyboard,
     )
-    return ATTACHMENT
+    return constants.ATTACHMENT
 
 
 async def attachment_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> str:
@@ -77,20 +58,20 @@ async def attachment_handler(update: Update, context: ContextTypes.DEFAULT_TYPE)
 
     await update.callback_query.answer()
     await update.callback_query.edit_message_text(text="Приложите файл до 20Mb")
-    return CREATE_WITH_ATTACHMENT
+    return constants.CREATE_WITH_ATTACHMENT
 
 
 async def create(update: Update, context: ContextTypes.DEFAULT_TYPE) -> str:
     log.info("def create.create")
 
-    new_ticket = context.user_data.get(NEW_TICKET)
+    new_ticket = context.user_data.get(constants.NEW_TICKET)
 
     json = {
         "Ticket": {
-            "Title": new_ticket[SUBJECT],
+            "Title": new_ticket[constants.SUBJECT],
             "Queue": "spam",
             "TypeID": 3,  # Запрос на обслуживание
-            "CustomerUser": context.user_data.get(CUSTOMER_USER_LOGIN),
+            "CustomerUser": context.user_data.get(constants.CUSTOMER_USER_LOGIN),
             "StateID": 1,  # new
             "PriorityID": 3,  # normal
             "OwnerID": 1,  # admin
@@ -101,9 +82,9 @@ async def create(update: Update, context: ContextTypes.DEFAULT_TYPE) -> str:
             "SenderType": "customer",
             "Charset": "utf-8",
             "MimeType": "text/plain",
-            "From": context.user_data.get(CUSTOMER_USER_LOGIN),
-            "Subject": new_ticket[SUBJECT],
-            "Body": new_ticket[BODY],
+            "From": context.user_data.get(constants.CUSTOMER_USER_LOGIN),
+            "Subject": new_ticket[constants.SUBJECT],
+            "Body": new_ticket[constants.BODY],
         },
     }
 
@@ -137,4 +118,4 @@ async def create(update: Update, context: ContextTypes.DEFAULT_TYPE) -> str:
             reply_markup=keyboard,
         )
 
-    return ATTACHMENT
+    return constants.ATTACHMENT
