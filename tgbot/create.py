@@ -3,17 +3,17 @@ from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import ContextTypes, ConversationHandler
 
 (
-    NEW_TICKET, # 0
-    SUBJECT, # 1
-    BODY, # 2
-    ATTACHMENT, # 3
-    UPLOAD, # 4
-    FINISH, # 5
-    CREATE, # 6
-    CREATE_WITH_ATTACHMENT, # 7
-    FILE_PATH, # 8
-    FILE_NAME, # 9
-    FILE_TYPE, # 10
+    NEW_TICKET,  # 0
+    SUBJECT,  # 1
+    BODY,  # 2
+    ATTACHMENT,  # 3
+    UPLOAD,  # 4
+    FINISH,  # 5
+    CREATE,  # 6
+    CREATE_WITH_ATTACHMENT,  # 7
+    FILE_PATH,  # 8
+    FILE_NAME,  # 9
+    FILE_TYPE,  # 10
 ) = range(0, 11)
 
 OVERVIEW = 25
@@ -117,7 +117,7 @@ async def create(update: Update, context: ContextTypes.DEFAULT_TYPE) -> str:
 
         await new_file.download_to_memory(buffer)
 
-        content = base64.b64encode(buffer.getvalue()).decode('utf-8')
+        content = base64.b64encode(buffer.getvalue()).decode("utf-8")
 
         json["Attachment"] = {
             "Content": content,
@@ -130,9 +130,7 @@ async def create(update: Update, context: ContextTypes.DEFAULT_TYPE) -> str:
     # ticket_create = {"TicketNumber": 123}
     buttons = [
         [
-            InlineKeyboardButton(
-                text="Назад", callback_data=str(STOPPING)
-            ),
+            InlineKeyboardButton(text="Назад", callback_data=str(STOPPING)),
         ],
     ]
     keyboard = InlineKeyboardMarkup(buttons)
@@ -142,10 +140,7 @@ async def create(update: Update, context: ContextTypes.DEFAULT_TYPE) -> str:
 
     if update.callback_query:
         await update.callback_query.answer()
-        await update.callback_query.edit_message_text(
-            text=text,
-            reply_markup=keyboard
-        )
+        await update.callback_query.edit_message_text(text=text, reply_markup=keyboard)
     else:
         await update.message.reply_text(
             text=text,
@@ -153,4 +148,3 @@ async def create(update: Update, context: ContextTypes.DEFAULT_TYPE) -> str:
         )
 
     return ConversationHandler.END
-

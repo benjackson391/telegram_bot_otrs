@@ -624,7 +624,8 @@ def main() -> None:
                         ConversationHandler.END: [
                             MessageHandler(filters.ALL, end_second_level),
                             CallbackQueryHandler(
-                                end_second_level, pattern="^" + str(ConversationHandler.END) + "$"
+                                end_second_level,
+                                pattern="^" + str(ConversationHandler.END) + "$",
                             ),
                         ],
                     },
