@@ -29,7 +29,10 @@ async def show_open_tickets(
     keyboard = InlineKeyboardMarkup(buttons)
 
     await update.callback_query.answer()
-    await update.callback_query.edit_message_text(text=text, reply_markup=keyboard)
+    await update.callback_query.edit_message_text(
+        text=f"{text} ({len(context.user_data[constants.TICKETS].keys())})",
+        reply_markup=keyboard,
+    )
 
     return constants.SELECTING_FEATURE
 
@@ -49,8 +52,8 @@ async def show_ticket(update: Update, context: ContextTypes.DEFAULT_TYPE) -> str
     text = f"""
         Номер заявки: #{ticket["TicketNumber"]}
         Тип: {ticket["Type"]}
-        Исполнитель: {ticket["Owner"]}
-        Статус: {ticket["State"]}
+        Исполнитель: {ticket["ExtendedOwner"]["UserFirstname"]} {ticket["ExtendedOwner"]["UserLastname"]}
+        Статус: {constants.TRANSLATION.get(ticket["State"])}
         Предельное время решения: {'SolutionTimeDestinationDate' in ticket and ticket["SolutionTimeDestinationDate"] or None}
     """
 

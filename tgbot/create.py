@@ -18,7 +18,7 @@ async def new_ticket(update: Update, context: ContextTypes.DEFAULT_TYPE) -> str:
 
     await update.callback_query.answer()
     await update.callback_query.edit_message_text(
-        text="Введите название заявки",
+        text="Введите тему заявки",
         reply_markup=keyboard,
     )
     return constants.SUBJECT
@@ -102,8 +102,8 @@ async def create(update: Update, context: ContextTypes.DEFAULT_TYPE) -> str:
         }
 
     # заглушка для тестирования
-    # ticket_create = helper._otrs_request("create", json)
-    ticket_create = {"TicketNumber": 123}
+    # ticket_create = {"TicketNumber": 123}
+    ticket_create = helper._otrs_request("create", json)
 
     keyboard = InlineKeyboardMarkup([helper.get_return_button()])
 

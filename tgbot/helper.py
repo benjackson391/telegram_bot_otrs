@@ -55,7 +55,6 @@ def collect_tickets(user_login=""):
         return collected_tickets
 
     with concurrent.futures.ThreadPoolExecutor(max_workers=4) as executor:
-
         for ticket_id in tickets.get("TicketID"):
             executor.submit(collect_ticket, ticket_id, collected_tickets)
 

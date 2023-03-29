@@ -278,6 +278,10 @@ def main() -> None:
                                 update.update_ticket,
                                 pattern="^TICKET_\d+$",
                             ),
+                            CallbackQueryHandler(
+                                common.end_second_level,
+                                pattern="^" + str(constants.END) + "$",
+                            ),
                         ],
                         constants.UPDATE_TICKET: [
                             CallbackQueryHandler(
@@ -290,19 +294,18 @@ def main() -> None:
                             ),
                         ],
                         constants.ATTACHMENT: [
-                            MessageHandler(
-                                filters.TEXT, update.comment_handler
-                            ),
+                            MessageHandler(filters.TEXT, update.comment_handler),
                             CallbackQueryHandler(
                                 update.update, pattern="^" + str(constants.CREATE) + "$"
                             ),
                             CallbackQueryHandler(
-                                update.attachment_handler, pattern="^" + str(constants.UPLOAD) + "$"
+                                update.attachment_handler,
+                                pattern="^" + str(constants.UPLOAD) + "$",
                             ),
                             CallbackQueryHandler(
                                 common.end_second_level,
                                 pattern="^" + str(constants.END) + "$",
-                            )
+                            ),
                         ],
                         constants.CREATE_WITH_ATTACHMENT: [
                             MessageHandler(filters.ALL, update.update),

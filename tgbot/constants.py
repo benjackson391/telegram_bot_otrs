@@ -3,8 +3,14 @@ from telegram.ext import ConversationHandler
 END = ConversationHandler.END
 
 ADMIN_IDS = [175214250]
-EXPIRATION = 6000
-COMMENT = 12345245
+EXPIRATION = 60  # 6000
+
+TRANSLATION = {
+    "new": "новая",
+    "open": "открыта",
+    "pending reminder": "ожидает напоминания",
+    "pending auto": "ожидает автозакрытия",
+}
 
 # auth
 # update

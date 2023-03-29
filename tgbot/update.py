@@ -7,6 +7,7 @@ from telegram.ext import ContextTypes
 log = logging.getLogger(__name__)
 buffer = io.BytesIO()
 
+
 async def update_tickets(update: Update, context: ContextTypes.DEFAULT_TYPE) -> str:
     log.debug("def update.update_tickets")
 
@@ -18,10 +19,15 @@ async def update_tickets(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
 
     keyboard = InlineKeyboardMarkup(buttons)
 
-    await update.callback_query.answer()
-    await update.callback_query.edit_message_text(
-        text="Выберите заявку, которую необходимо обновить", reply_markup=keyboard
+    tickets_number = len(context.user_data[constants.TICKETS].keys())
+    text = (
+        "Выберите заявку, которую необходимо обновить"
+        if tickets_number > 0
+        else "Нет открытых заявок"
     )
+
+    await update.callback_query.answer()
+    await update.callback_query.edit_message_text(text=text, reply_markup=keyboard)
 
     return constants.SHOW_TICKETS
 
@@ -92,6 +98,7 @@ async def comment_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
     )
     return constants.ATTACHMENT
 
+
 async def attachment_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> str:
     log.debug("def create.attachment_upload")
 
@@ -131,10 +138,7 @@ async def update(update: Update, context: ContextTypes.DEFAULT_TYPE) -> str:
             "Filename": update.message.document.file_name,
         }
 
-    ticket_update = helper._otrs_request(
-        "update",
-        json
-    )
+    ticket_update = helper._otrs_request("update", json)
 
     text = f"Ваша обращение #{ticket_update['TicketNumber']} обновлено!"
 
