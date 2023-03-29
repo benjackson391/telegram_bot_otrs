@@ -126,11 +126,13 @@ async def create(update: Update, context: ContextTypes.DEFAULT_TYPE) -> str:
         }
 
     # заглушка для тестирования
-    ticket_create = bot_utils._otrs_request("create", json)
-    # ticket_create = {"TicketNumber": 123}
+    # ticket_create = bot_utils._otrs_request("create", json)
+    ticket_create = {"TicketNumber": 123}
     buttons = [
         [
-            InlineKeyboardButton(text="Назад", callback_data=str(STOPPING)),
+            InlineKeyboardButton(
+                text="Назад", callback_data=str(ConversationHandler.END)
+            ),
         ],
     ]
     keyboard = InlineKeyboardMarkup(buttons)
@@ -147,4 +149,4 @@ async def create(update: Update, context: ContextTypes.DEFAULT_TYPE) -> str:
             reply_markup=keyboard,
         )
 
-    return ConversationHandler.END
+    return ATTACHMENT

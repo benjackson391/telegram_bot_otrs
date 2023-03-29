@@ -605,6 +605,9 @@ def main() -> None:
                     states={
                         create.SUBJECT: [
                             MessageHandler(filters.TEXT, create.subject_handler),
+                            CallbackQueryHandler(
+                                end_second_level, pattern="^" + str(END) + "$"
+                            ),
                         ],
                         create.BODY: [
                             MessageHandler(filters.TEXT, create.body_handler),
@@ -617,23 +620,15 @@ def main() -> None:
                             CallbackQueryHandler(
                                 create.create, pattern="^" + str(create.CREATE) + "$"
                             ),
+                            CallbackQueryHandler(
+                                end_second_level, pattern="^" + str(END) + "$"
+                            ),
                         ],
                         create.CREATE_WITH_ATTACHMENT: [
                             MessageHandler(filters.ALL, create.create),
                         ],
-                        ConversationHandler.END: [
-                            MessageHandler(filters.ALL, end_second_level),
-                            CallbackQueryHandler(
-                                end_second_level,
-                                pattern="^" + str(ConversationHandler.END) + "$",
-                            ),
-                        ],
                     },
-                    fallbacks=[
-                        CallbackQueryHandler(
-                            end_second_level, pattern="^" + str(END) + "$"
-                        ),
-                    ],
+                    fallbacks=[],
                     map_to_parent={
                         # After showing data return to top level menu
                         OVERVIEW: OVERVIEW,
