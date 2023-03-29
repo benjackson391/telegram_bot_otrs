@@ -1,6 +1,8 @@
-import base64, logging, io, os, sys, bot_utils
+import base64, logging, io, os, sys
+
+from tgbot import helper
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
-from telegram.ext import ContextTypes, ConversationHandler
+from telegram.ext import ContextTypes
 
 (
     NEW_TICKET,  # 0
@@ -31,14 +33,7 @@ async def new_ticket(update: Update, context: ContextTypes.DEFAULT_TYPE) -> str:
 
     context.user_data[NEW_TICKET] = {}
 
-    buttons = [
-        [
-            InlineKeyboardButton(
-                text="Назад", callback_data=str(ConversationHandler.END)
-            ),
-        ],
-    ]
-    keyboard = InlineKeyboardMarkup(buttons)
+    keyboard = InlineKeyboardMarkup([helper.get_return_button])
 
     await update.callback_query.answer()
     await update.callback_query.edit_message_text(
@@ -126,18 +121,11 @@ async def create(update: Update, context: ContextTypes.DEFAULT_TYPE) -> str:
         }
 
     # заглушка для тестирования
-    # ticket_create = bot_utils._otrs_request("create", json)
+    # ticket_create = helper._otrs_request("create", json)
     ticket_create = {"TicketNumber": 123}
-    buttons = [
-        [
-            InlineKeyboardButton(
-                text="Назад", callback_data=str(ConversationHandler.END)
-            ),
-        ],
-    ]
-    keyboard = InlineKeyboardMarkup(buttons)
 
-    log.info(json)
+    keyboard = InlineKeyboardMarkup([helper.get_return_button])
+
     text = f"Ваша обращение принято. Номер заявки #{ticket_create['TicketNumber']}"
 
     if update.callback_query:

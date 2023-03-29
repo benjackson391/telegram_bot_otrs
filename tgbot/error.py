@@ -13,7 +13,7 @@ class ButtonError(Exception):
     pass
 
 
-def error_handler(update: object, context: CallbackContext) -> None:
+async def error_handler(update: object, context: CallbackContext) -> None:
     logging.error(msg="Exception while handling an update:", exc_info=context.error)
     tb_list = traceback.format_exception(
         None, context.error, context.error.__traceback__
@@ -29,4 +29,4 @@ def error_handler(update: object, context: CallbackContext) -> None:
         f"<pre>{html.escape(tb_string)}</pre>"
     )
     for admin in ADMIN_IDS:
-        context.bot.send_message(chat_id=admin, text=message, parse_mode="HTML")
+        await context.bot.send_message(chat_id=admin, text=message, parse_mode="HTML")

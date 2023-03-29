@@ -1,11 +1,11 @@
 #!/usr/bin/env python
 
 
-import argparse, click, concurrent.futures, json, html, http, logging, traceback, random, re, redis, bot_utils
+import argparse, click, concurrent.futures, json, html, http, logging, traceback, random, re
 from rich_argparse import RichHelpFormatter
 from typing import Any, Dict, Tuple
 
-from tgbot import create, error
+from tgbot import create, check, error, helper
 
 from telegram import __version__ as TG_VER
 
@@ -40,40 +40,38 @@ END = ConversationHandler.END
 
 (
     # states
-    USER_IS_AUTHORIZED,  # 10
-    AUTHORISATION,  # 11
-    NEW_TICKET,  # 12
-    CHECK_TICKET,  # 13
-    UPDATE_TICKET,  # 14
-    START_OVER,  # 15
-    SELECTING_ACTION,  # 16
-    CURRENT_STEP,  # 17
-    TYPING,  # 18
-    AUTHORISATION_PROCESS,  # 19
-    AUTH_PROCESS,  # 20
-    CONFIRMATION_CODE,  # 21
-    CONFIRMATION_CODE_STATUS,  # 22
-    START_OVER,  # 23
-    CUSTOMER_USER_LOGIN,  # 24
-    SELECTING_FEATURE,  # 25
-    OVERVIEW,  # 26
-    STOPPING,  # 27
-    TICKETS,  # 28
-    TICKET_ID,  # 29
-    NEW_COMMENT,  # 30
+    USER_IS_AUTHORIZED,  # 11
+    AUTHORISATION,  # 12
+    NEW_TICKET,  # 13
+    CHECK_TICKET,  # 14
+    UPDATE_TICKET,  # 15
+    START_OVER,  # 16
+    SELECTING_ACTION,  # 17
+    CURRENT_STEP,  # 18
+    TYPING,  # 19
+    AUTHORISATION_PROCESS,  # 20
+    AUTH_PROCESS,  # 21
+    CONFIRMATION_CODE,  # 22
+    CONFIRMATION_CODE_STATUS,  # 23
+    START_OVER,  # 24
+    CUSTOMER_USER_LOGIN,  # 25
+    SELECTING_FEATURE,  # 26
+    OVERVIEW,  # 27
+    STOPPING,  # 28
+    TICKETS,  # 29
+    TICKET_ID,  # 30
+    NEW_COMMENT,  # 31
     # new_ticket
     # attributes
-    EMAIL,  # 31
+    EMAIL,  # 32
     # errors
-    EMAIL_NOT_FOUND,  # 32
-    UPLOAD_ATTACHMENT,  # 33
+    EMAIL_NOT_FOUND,  # 33
+    UPLOAD_ATTACHMENT,  # 34
     # ) = map(chr, range(0, 10))
 ) = range(11, 35)
 
 
 args = {}
-
-r = redis.Redis(host="localhost", port=6379, db=0)
 
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> str:
@@ -84,7 +82,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> str:
         context.user_data[CONFIRMATION_CODE_STATUS] = 0
         context.user_data[CUSTOMER_USER_LOGIN] = ""
 
-        auth = bot_utils._otrs_request(
+        auth = helper._otrs_request(
             "auth", {"TelegramLogin": update.message.from_user.username}
         )
         if "Error" not in auth:
@@ -136,7 +134,7 @@ async def authorisation(update: Update, context: ContextTypes.DEFAULT_TYPE) -> s
     logging.info("def authorisation")
 
     context.user_data[CONFIRMATION_CODE] = random.randint(100000, 999999)
-    confirm_account = bot_utils._otrs_request(
+    confirm_account = helper._otrs_request(
         "confirm_account",
         {
             "Email": context.user_data[EMAIL],
@@ -183,7 +181,7 @@ async def ask_for_input(
         confirmation_code_text = "Код верный"
         context.user_data[USER_IS_AUTHORIZED] = True
 
-        confirm_account = bot_utils._otrs_request(
+        confirm_account = helper._otrs_request(
             "confirm_account",
             {
                 "Email": context.user_data[EMAIL],
@@ -235,7 +233,7 @@ async def save_input(update: Update, context: ContextTypes.DEFAULT_TYPE) -> str:
         return await ask_for_input(update, context, str(CONFIRMATION_CODE))
     elif context.user_data[CURRENT_STEP] == str(UPDATE_TICKET):
         logging.info(f"CONFIRMATION_CODE")
-        ticket_update = bot_utils._otrs_request(
+        ticket_update = helper._otrs_request(
             "update",
             {
                 "TicketID": context.user_data[TICKET_ID],
@@ -262,32 +260,17 @@ async def end_second_level(update: Update, context: ContextTypes.DEFAULT_TYPE) -
     return END
 
 
-async def show_open_tickets(
-    update: Update, context: ContextTypes.DEFAULT_TYPE, text
-) -> str:
-    context.user_data[TICKETS] = collect_tickets(context.user_data[CUSTOMER_USER_LOGIN])
-
-    buttons = build_ticket_buttons(context.user_data[TICKETS])
-
-    keyboard = InlineKeyboardMarkup(buttons)
-
-    await update.callback_query.answer()
-    await update.callback_query.edit_message_text(text=text, reply_markup=keyboard)
-
-    return SELECTING_FEATURE
-
-
 async def update_tickets(update: Update, context: ContextTypes.DEFAULT_TYPE) -> str:
     logging.info("def update_tickets")
 
     context.user_data[CURRENT_STEP] = str(UPDATE_TICKET)
-    return await show_open_tickets(
+    return await check.show_open_tickets(
         update, context, "Выберите заявку, которую необходимо обновить"
     )
 
 
 async def update_ticket(update: Update, context: ContextTypes.DEFAULT_TYPE) -> str:
-    logging.info("def show_ticket")
+    logging.info("def update_ticket")
 
     context.user_data[TICKET_ID] = update.callback_query.data.split("_")[-1]
     ticket = context.user_data.get(TICKETS)[context.user_data[TICKET_ID]]
@@ -316,39 +299,6 @@ async def update_ticket(update: Update, context: ContextTypes.DEFAULT_TYPE) -> s
 
     await update.callback_query.answer()
     await update.callback_query.edit_message_text(text=text, reply_markup=keyboard)
-
-    return SELECTING_FEATURE
-
-
-async def check_tickets(update: Update, context: ContextTypes.DEFAULT_TYPE) -> str:
-    logging.info("def check_tickets")
-
-    context.user_data[CURRENT_STEP] = str(CHECK_TICKET)
-    return await show_open_tickets(update, context, "Открытые заявки")
-
-
-async def show_ticket(update: Update, context: ContextTypes.DEFAULT_TYPE) -> str:
-    logging.info("def show_ticket")
-
-    context.user_data[TICKET_ID] = update.callback_query.data.split("_")[-1]
-    context.user_data[TICKETS] = collect_tickets(context.user_data[CUSTOMER_USER_LOGIN])
-
-    ticket = context.user_data[TICKETS][context.user_data[TICKET_ID]]
-
-    text = f"""
-        Номер заявки: #{ticket["TicketNumber"]}
-        Тип: {ticket["Type"]}
-        Исполнитель: {ticket["Owner"]}
-        Статус: {ticket["State"]}
-        Предельное время решения: {'SolutionTimeDestinationDate' in ticket and ticket["SolutionTimeDestinationDate"] or None}
-    """
-
-    buttons = [[InlineKeyboardButton(text="Назад", callback_data=str(END))]]
-    keyboard = InlineKeyboardMarkup(buttons)
-
-    await update.callback_query.answer()
-    await update.callback_query.edit_message_text(text=text, reply_markup=keyboard)
-    context.user_data[START_OVER] = True
 
     return SELECTING_FEATURE
 
@@ -447,56 +397,6 @@ def init_logging():
         handlers=handlers,
     )
     logging.getLogger("rich").setLevel("DEBUG")
-    bot_utils._set_logging(logging, args)
-
-
-def collect_ticket(ticket_id, collected_tickets):
-    collected_tickets[ticket_id] = bot_utils._otrs_request(f"ticket/{ticket_id}", {})[
-        "Ticket"
-    ][0]
-
-
-def collect_tickets(user_login=""):
-    logging.info("def collect_tickets")
-
-    if r.exists(user_login):
-        return json.loads(r.get(user_login))
-
-    collected_tickets = {}
-    tickets = bot_utils._otrs_request(
-        "search",
-        {
-            "CustomerUserLogin": user_login,
-            "StateType": ["open", "new", "pending reminder"],
-        },
-    )
-
-    with concurrent.futures.ThreadPoolExecutor(max_workers=4) as executor:
-        for ticket_id in tickets.get("TicketID"):
-            executor.submit(collect_ticket, ticket_id, collected_tickets)
-
-    r.set(user_login, json.dumps(collected_tickets))
-    r.expire(user_login, 60)
-    return collected_tickets
-
-
-def build_ticket_buttons(tickets):
-    buttons = []
-    for ticket_id in tickets:
-        ticket = tickets[ticket_id]
-        logging.info(ticket_id)
-        logging.info(ticket)
-        buttons.append(
-            [
-                InlineKeyboardButton(
-                    text=f"#{ticket['TicketNumber']}: {ticket['Title']}",
-                    callback_data=f"TICKET_{ticket['TicketID']}",
-                )
-            ]
-        )
-
-    buttons.append([InlineKeyboardButton(text="Назад", callback_data=str(END))])
-    return buttons
 
 
 def main() -> None:
@@ -571,13 +471,13 @@ def main() -> None:
                 ConversationHandler(
                     entry_points=[
                         CallbackQueryHandler(
-                            check_tickets, pattern="^" + str(CHECK_TICKET) + "$"
+                            check.check_tickets, pattern="^" + str(CHECK_TICKET) + "$"
                         )
                     ],
                     states={
                         SELECTING_FEATURE: [
                             CallbackQueryHandler(
-                                show_ticket,
+                                check.show_ticket,
                                 pattern="^TICKET_\d+$",
                             ),
                             CallbackQueryHandler(
