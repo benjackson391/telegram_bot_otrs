@@ -38,7 +38,6 @@ def collect_ticket(ticket_id, collected_tickets):
 
 def collect_tickets(user_login=""):
     logging.info("def helper.collect_tickets")
-    logging.info(user_login)
 
     if user_login and r.exists(user_login):
         return json.loads(r.get(user_login))
@@ -52,24 +51,26 @@ def collect_tickets(user_login=""):
         },
     )
 
+    if not tickets:
+        return collected_tickets
+
     with concurrent.futures.ThreadPoolExecutor(max_workers=4) as executor:
+
         for ticket_id in tickets.get("TicketID"):
             executor.submit(collect_ticket, ticket_id, collected_tickets)
 
     r.set(user_login, json.dumps(collected_tickets))
-    r.expire(user_login, 60)
+    r.expire(user_login, constants.EXPIRATION)
 
     return collected_tickets
 
 
-def build_ticket_buttons(tickets):
+def build_ticket_buttons(tickets=[]):
     logging.info("def helper.build_ticket_buttons")
 
     buttons = []
     for ticket_id in tickets:
         ticket = tickets[ticket_id]
-        logging.info(ticket_id)
-        logging.info(ticket)
         buttons.append(
             [
                 InlineKeyboardButton(

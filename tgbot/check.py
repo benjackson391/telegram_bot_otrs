@@ -20,7 +20,6 @@ async def show_open_tickets(
 ) -> str:
     logging.info("def check.show_open_tickets")
 
-    log.info(context.user_data)
     context.user_data[constants.TICKETS] = helper.collect_tickets(
         context.user_data[constants.CUSTOMER_USER_LOGIN]
     )

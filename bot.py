@@ -5,7 +5,7 @@ import argparse, click, concurrent.futures, json, html, http, logging, traceback
 from rich_argparse import RichHelpFormatter
 from typing import Any, Dict, Tuple
 
-from tgbot import common, constants, create, check, error, helper
+from tgbot import common, constants, create, check, error, helper, update
 
 from telegram import __version__ as TG_VER
 
@@ -40,7 +40,7 @@ args = {}
 
 
 async def authorisation(update: Update, context: ContextTypes.DEFAULT_TYPE) -> str:
-    logging.info("def authorisation")
+    logging.debug("def authorisation")
 
     context.user_data[constants.CONFIRMATION_CODE] = random.randint(100000, 999999)
     confirm_account = helper._otrs_request(
@@ -50,8 +50,6 @@ async def authorisation(update: Update, context: ContextTypes.DEFAULT_TYPE) -> s
             "Code": context.user_data[constants.CONFIRMATION_CODE],
         },
     )
-
-    logging.info(confirm_account)
 
     if not bool(confirm_account["data"]):
         context.user_data[constants.EMAIL_NOT_FOUND] = True
@@ -68,15 +66,13 @@ async def authorisation(update: Update, context: ContextTypes.DEFAULT_TYPE) -> s
 async def ask_for_input(
     update: Update, context: ContextTypes.DEFAULT_TYPE, current_step=""
 ) -> str:
-    logging.info("def ask_for_input")
-
-    logging.info(f"current_step: {current_step}")
+    logging.debug("def ask_for_input")
 
     if not current_step:
         current_step = update.callback_query.data
 
     # update ticket
-    if bool(re.match("^NEW_COMMENT_\d+$", current_step)):
+    if bool(re.match("^COMMENT_\d+$", current_step)):
         current_step = str(constants.UPDATE_TICKET)
         context.user_data[constants.TICKET_ID] = update.callback_query.data.split("_")[
             -1
@@ -129,93 +125,22 @@ async def ask_for_input(
 
 
 async def save_input(update: Update, context: ContextTypes.DEFAULT_TYPE) -> str:
-    logging.info("def save_input")
-    logging.info(context.user_data)
+    logging.debug("def save_input")
 
     input_text = update.message.text
 
     if context.user_data[constants.CURRENT_STEP] == str(constants.AUTHORISATION):
-        logging.info("AUTHORISATION")
+        logging.debug("AUTHORISATION")
         context.user_data[constants.EMAIL] = input_text
         return await authorisation(update, context)
     elif context.user_data[constants.CURRENT_STEP] == str(constants.CONFIRMATION_CODE):
-        logging.info(f"CONFIRMATION_CODE")
+        logging.debug(f"CONFIRMATION_CODE")
         context.user_data[constants.CONFIRMATION_CODE_STATUS] = (
             2
             if int(context.user_data[constants.CONFIRMATION_CODE]) == int(input_text)
             else 1
         )
         return await ask_for_input(update, context, str(constants.CONFIRMATION_CODE))
-    elif context.user_data[constants.CURRENT_STEP] == str(constants.UPDATE_TICKET):
-        logging.info(f"CONFIRMATION_CODE")
-        ticket_update = helper._otrs_request(
-            "update",
-            {
-                "TicketID": context.user_data[constants.TICKET_ID],
-                "Article": {
-                    "CommunicationChannel": "Internal",
-                    "SenderType": "customer",
-                    "Charset": "utf-8",
-                    "MimeType": "text/plain",
-                    "From": context.user_data[constants.CUSTOMER_USER_LOGIN],
-                    "Subject": "Telegram message",
-                    "Body": input_text,
-                },
-            },
-        )
-        context.user_data[constants.START_OVER] = False
-        return await common.start(update, context)
-
-
-async def update_tickets(update: Update, context: ContextTypes.DEFAULT_TYPE) -> str:
-    logging.info("def update_tickets")
-
-    context.user_data[constants.CURRENT_STEP] = str(constants.UPDATE_TICKET)
-    return await check.show_open_tickets(
-        update, context, "Выберите заявку, которую необходимо обновить"
-    )
-
-
-async def update_ticket(update: Update, context: ContextTypes.DEFAULT_TYPE) -> str:
-    logging.info("def update_ticket")
-
-    context.user_data[constants.TICKET_ID] = update.callback_query.data.split("_")[-1]
-    ticket = context.user_data.get(constants.TICKETS)[
-        context.user_data[constants.TICKET_ID]
-    ]
-
-    text = f"""
-        Номер заявки: #{ticket["TicketNumber"]}
-        Тип: {ticket["Type"]}
-        Исполнитель: {ticket["Owner"]}
-        Статус: {ticket["State"]}
-        Предельное время решения: {'SolutionTimeDestinationDate' in ticket and ticket["SolutionTimeDestinationDate"] or None}
-
-        Какую информацию нужно обновить?
-    """
-
-    buttons = [
-        [
-            InlineKeyboardButton(
-                text="Добавьте комментарий",
-                callback_data=f"NEW_COMMENT_{context.user_data[constants.TICKET_ID]}",
-            )
-        ],
-        # [InlineKeyboardButton(text="Прикрепить файл", callback_data=str(NEW_TICKET))],
-        [InlineKeyboardButton(text="Назад", callback_data=str(constants.NEW_TICKET))],
-    ]
-    keyboard = InlineKeyboardMarkup(buttons)
-
-    await update.callback_query.answer()
-    await update.callback_query.edit_message_text(text=text, reply_markup=keyboard)
-
-    return constants.SELECTING_FEATURE
-
-
-async def stop_nested(update: Update, context: ContextTypes.DEFAULT_TYPE) -> str:
-    await update.message.reply_text("До встречи.")
-
-    return constants.STOPPING
 
 
 async def stop(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
@@ -225,8 +150,7 @@ async def stop(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
 
 
 async def show_data(update: Update, context: ContextTypes.DEFAULT_TYPE) -> str:
-    logging.info("def show_data")
-    logging.info(context.user_data)
+    logging.debug("def show_data")
 
     new_ticket = context.user_data.get(constants.NEW_TICKET)
 
@@ -245,7 +169,7 @@ async def show_data(update: Update, context: ContextTypes.DEFAULT_TYPE) -> str:
 
 
 async def ask_for_input_old(update: Update, context: ContextTypes.DEFAULT_TYPE) -> str:
-    logging.info("def ask_for_input")
+    logging.debug("def ask_for_input")
 
     context.user_data[constants.CURRENT_STEP] = update.callback_query.data
     text = f"Введите текст"
@@ -332,7 +256,7 @@ def main() -> None:
                         ],
                     },
                     fallbacks=[
-                        CommandHandler("stop", stop_nested),
+                        CommandHandler("stop", stop),
                     ],
                     map_to_parent={
                         # OVERVIEW: OVERVIEW,
@@ -344,31 +268,63 @@ def main() -> None:
                 ConversationHandler(
                     entry_points=[
                         CallbackQueryHandler(
-                            update_tickets,
+                            update.update_tickets,
                             pattern="^" + str(constants.UPDATE_TICKET) + "$",
                         )
                     ],
                     states={
-                        constants.SELECTING_FEATURE: [
+                        constants.SHOW_TICKETS: [
                             CallbackQueryHandler(
-                                update_ticket,
+                                update.update_ticket,
                                 pattern="^TICKET_\d+$",
                             ),
+                        ],
+                        constants.UPDATE_TICKET: [
                             CallbackQueryHandler(
-                                ask_for_input,
-                                pattern="^NEW_COMMENT_\d+$",
+                                update.add_comment,
+                                pattern="^" + str(constants.COMMENT) + "$",
                             ),
                             CallbackQueryHandler(
                                 common.end_second_level,
                                 pattern="^" + str(constants.END) + "$",
                             ),
                         ],
-                        constants.TYPING: [
-                            MessageHandler(filters.TEXT & ~filters.COMMAND, save_input),
+                        constants.ATTACHMENT: [
+                            MessageHandler(
+                                filters.TEXT, update.comment_handler
+                            ),
+                            CallbackQueryHandler(
+                                update.update, pattern="^" + str(constants.CREATE) + "$"
+                            ),
+                            CallbackQueryHandler(
+                                update.attachment_handler, pattern="^" + str(constants.UPLOAD) + "$"
+                            ),
+                            CallbackQueryHandler(
+                                common.end_second_level,
+                                pattern="^" + str(constants.END) + "$",
+                            )
                         ],
+                        constants.CREATE_WITH_ATTACHMENT: [
+                            MessageHandler(filters.ALL, update.update),
+                        ]
+                        # constants.SELECTING_FEATURE: [
+                        #     CallbackQueryHandler(
+                        #         update.add_comment,
+                        #         pattern="^" + str(constants.COMMENT) + "$",
+                        #     ),
+                        #     CallbackQueryHandler(
+                        #         common.end_second_level,
+                        #         pattern="^" + str(constants.END) + "$",
+                        #     ),
+                        # ],
+                        # constants.COMMENT: [
+                        #     MessageHandler(
+                        #         filters.TEXT & ~filters.COMMAND, update.comment_handler
+                        #     ),
+                        # ],
                     },
                     fallbacks=[
-                        CommandHandler("stop", stop_nested),
+                        CommandHandler("stop", stop),
                     ],
                     map_to_parent={
                         # OVERVIEW: OVERVIEW,
@@ -397,15 +353,11 @@ def main() -> None:
                         ]
                     },
                     fallbacks=[
-                        CommandHandler("stop", stop_nested),
+                        CommandHandler("stop", stop),
                     ],
-                    map_to_parent={
-                        # OVERVIEW: OVERVIEW,
-                        # END: SELECTING_ACTION,
-                        # STOPPING: END,
-                    },
+                    map_to_parent={},
                 ),
-                # new
+                # create
                 ConversationHandler(
                     entry_points=[
                         CallbackQueryHandler(
