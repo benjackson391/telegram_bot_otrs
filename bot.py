@@ -68,7 +68,7 @@ END = ConversationHandler.END
     EMAIL_NOT_FOUND,  # 32
     UPLOAD_ATTACHMENT,  # 33
     # ) = map(chr, range(0, 10))
-) = range(10, 34)
+) = range(11, 35)
 
 
 args = {}
@@ -499,11 +499,6 @@ def build_ticket_buttons(tickets):
     return buttons
 
 
-def echo_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    update.message.reply_text(
-        f'update: {update}',
-    )
-
 def main() -> None:
     init_logging()
 
@@ -622,15 +617,12 @@ def main() -> None:
                             CallbackQueryHandler(
                                 create.create, pattern="^" + str(create.CREATE) + "$"
                             ),
-                            # MessageHandler(filters.ALL, create.create),
                         ],
-                        create.UPLOAD: [
-                            MessageHandler(filters.Document.ALL, create.upload),
+                        create.CREATE_WITH_ATTACHMENT: [
+                            MessageHandler(filters.ALL, create.create),
                         ],
-                        # create.CREATE: [
-                        #     MessageHandler(filters.ALL, create.create),
-                        # ],
                         ConversationHandler.END: [
+                            MessageHandler(filters.ALL, end_second_level),
                             CallbackQueryHandler(
                                 end_second_level, pattern="^" + str(ConversationHandler.END) + "$"
                             ),
@@ -658,7 +650,6 @@ def main() -> None:
     )
 
     application.add_handler(conv_handler)
-    application.add_handler(MessageHandler(filters.ALL, echo_handler))
     application.add_error_handler(error.error_handler)
     application.run_polling()
 
