@@ -5,7 +5,7 @@ from telegram.ext import ConversationHandler
 from tgbot import constants
 
 log = logging.getLogger(__name__)
-r = redis.Redis(host="localhost", port=6379, db=0)
+r = redis.Redis(host="redis", port=6379, db=0)
 
 otrs_url = "https://otrs.efsol.ru/otrs/nph-genericinterface.pl/Webservice/bot"
 otrs_user = "telegram_bot"
