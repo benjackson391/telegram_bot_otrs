@@ -112,6 +112,11 @@ async def update(update: Update, context: ContextTypes.DEFAULT_TYPE) -> str:
 
     to_update = context.user_data.get(constants.UPDATE_TICKET)
 
+    # TODO fix this place
+    customer_user = context.user_data.get(constants.CUSTOMER_USER_LOGIN)
+    if not customer_user:
+        customer_user = context.user_data.get(constants.EMAIL)
+
     json = {
         "TicketID": to_update.get(constants.TICKET_ID),
         "Article": {
@@ -119,7 +124,7 @@ async def update(update: Update, context: ContextTypes.DEFAULT_TYPE) -> str:
             "SenderType": "customer",
             "Charset": "utf-8",
             "MimeType": "text/plain",
-            "From": context.user_data.get(constants.CUSTOMER_USER_LOGIN),
+            "From": customer_user,
             "Subject": "Telegram message",
             "Body": to_update.get(constants.COMMENT),
         },

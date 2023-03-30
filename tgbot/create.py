@@ -66,12 +66,17 @@ async def create(update: Update, context: ContextTypes.DEFAULT_TYPE) -> str:
 
     new_ticket = context.user_data.get(constants.NEW_TICKET)
 
+    # TODO fix this place
+    customer_user = context.user_data.get(constants.CUSTOMER_USER_LOGIN)
+    if not customer_user:
+        customer_user = context.user_data.get(constants.EMAIL)
+
     json = {
         "Ticket": {
             "Title": new_ticket[constants.SUBJECT],
             "Queue": "spam",
             "TypeID": 3,  # Запрос на обслуживание
-            "CustomerUser": context.user_data.get(constants.CUSTOMER_USER_LOGIN),
+            "CustomerUser": customer_user,
             "StateID": 1,  # new
             "PriorityID": 3,  # normal
             "OwnerID": 1,  # admin
@@ -82,7 +87,7 @@ async def create(update: Update, context: ContextTypes.DEFAULT_TYPE) -> str:
             "SenderType": "customer",
             "Charset": "utf-8",
             "MimeType": "text/plain",
-            "From": context.user_data.get(constants.CUSTOMER_USER_LOGIN),
+            "From": customer_user,
             "Subject": new_ticket[constants.SUBJECT],
             "Body": new_ticket[constants.BODY],
         },
