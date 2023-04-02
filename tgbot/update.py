@@ -1,5 +1,5 @@
 import logging, base64, io
-from tgbot import check, constants, helper
+from tgbot import constants, helper
 
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import ContextTypes

@@ -1,15 +1,12 @@
 import json, logging, requests, redis, concurrent.futures
-from typing import Any, Dict, Tuple
+
+from decouple import config
+from typing import Any
 from telegram import InlineKeyboardButton
-from telegram.ext import ConversationHandler
-from tgbot import constants
+from tgbot import constants, common
 
 log = logging.getLogger(__name__)
-r = redis.Redis(host="redis", port=6379, db=0)
-
-otrs_url = "https://otrs.efsol.ru/otrs/nph-genericinterface.pl/Webservice/bot"
-otrs_user = "telegram_bot"
-otrs_password = "GBYudLWmfGQV"
+r = redis.Redis(host=config("REDIS"), port=6379, db=0)
 
 
 def get_return_button(end=constants.END):
@@ -17,16 +14,15 @@ def get_return_button(end=constants.END):
 
 
 def _otrs_request(path: str, json: str) -> Any:
-    logging.debug("def helper._otrs_request")
+    common.debug("def helper._otrs_request")
+    common.debug(f"path: {path} request: {json}")
 
-    logging.info(f"path: {path} request: {json}")
+    json["UserLogin"] = config("OTRS_USER")
+    json["Password"] = config("OTRS_PASSWORD")
 
-    json["UserLogin"] = otrs_user
-    json["Password"] = otrs_password
-
-    response = requests.post(f"{otrs_url}/{path}", json=json)
+    response = requests.post(f'{config("URL")}/{path}', json=json)
     response_json = response.json()
-    logging.info(f"code: {response.status_code} raw: {response_json}")
+    common.debug(f"code: {response.status_code} raw: {response_json}")
 
     return response_json
 

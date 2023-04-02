@@ -1,12 +1,17 @@
 import logging
 
+from decouple import config
+
 from tgbot import constants, helper
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import ContextTypes, ConversationHandler
 
-START_OVER = 16
-
 log = logging.getLogger(__name__)
+
+
+def debug(msg):
+    if config("DEBUG"):
+        logging.info(msg)
 
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> str:
@@ -60,7 +65,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> str:
         )
     )
 
-    if context.user_data.get(START_OVER):
+    if context.user_data.get(constants.START_OVER):
         await update.callback_query.answer()
         await update.callback_query.edit_message_text(text=text, reply_markup=keyboard)
     else:
@@ -69,13 +74,19 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> str:
         )
         await update.message.reply_text(text=text, reply_markup=keyboard)
 
-    context.user_data[START_OVER] = False
+    context.user_data[constants.START_OVER] = False
     return constants.SELECTING_ACTION
 
 
 async def end_second_level(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     logging.info("def end_second_level")
-    context.user_data[START_OVER] = True
+    context.user_data[constants.START_OVER] = True
     await start(update, context)
+
+    return constants.END
+
+
+async def stop(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    await update.message.reply_text("До встречи.")
 
     return constants.END

@@ -46,7 +46,6 @@ COMMENT = 0
     AUTH_PROCESS,  # 22
     CONFIRMATION_CODE,  # 23
     CONFIRMATION_CODE_STATUS,  # 24
-    START_OVER,  # 25
     CUSTOMER_USER_LOGIN,  # 26
     SELECTING_FEATURE,  # 27
     OVERVIEW,  # 28
@@ -60,4 +59,4 @@ COMMENT = 0
     EMAIL_NOT_FOUND,  # 33
     UPLOAD_ATTACHMENT,  # 34
     SHOW_TICKETS,
-) = map(int, range(12, 36))
+) = map(int, range(12, 35))
