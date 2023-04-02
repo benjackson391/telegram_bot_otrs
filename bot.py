@@ -80,22 +80,27 @@ def main() -> None:
 
     application = Application.builder().token(config("TOKEN")).build()
 
+    fallbacks=[
+        CallbackQueryHandler(common.end_second_level, pattern="^" + str(constants.END) + "$"),
+        CommandHandler("stop", common.stop),
+    ]
+
     auth_conv = ConversationHandler(
         entry_points=[
             CallbackQueryHandler(
-                auth.ask_for_input,
+                auth.entry,
                 pattern="^" + str(constants.AUTHORISATION) + "$",
             )
         ],
         states={
-            constants.TYPING: [
-                MessageHandler(filters.TEXT & ~filters.COMMAND, auth.save_input),
+            constants.EMAIL: [
+                MessageHandler(filters.TEXT, auth.email_handler),
+            ],
+            constants.CONFIRMATION_CODE: [
+                MessageHandler(filters.TEXT, auth.code_handler),
             ],
         },
-        fallbacks=[
-            CommandHandler("stop", common.stop),
-        ],
-        map_to_parent={},
+        fallbacks=fallbacks
     )
 
     update_conv = ConversationHandler(
@@ -144,10 +149,7 @@ def main() -> None:
                 MessageHandler(filters.ALL, update.update),
             ],
         },
-        fallbacks=[
-            CommandHandler("stop", common.stop),
-        ],
-        map_to_parent={},
+        fallbacks=fallbacks
     )
 
     check_conv = ConversationHandler(
@@ -169,10 +171,7 @@ def main() -> None:
                 ),
             ]
         },
-        fallbacks=[
-            CommandHandler("stop", common.stop),
-        ],
-        map_to_parent={},
+        fallbacks=fallbacks
     )
 
     create_conv = ConversationHandler(
@@ -210,8 +209,7 @@ def main() -> None:
                 MessageHandler(filters.ALL, create.create),
             ],
         },
-        fallbacks=[],
-        map_to_parent={},
+        fallbacks=fallbacks
     )
 
     conv_handler = ConversationHandler(
@@ -222,11 +220,10 @@ def main() -> None:
                 update_conv,
                 check_conv,
                 create_conv,
-            ]
+            ],
+            constants.STOPPING: [CommandHandler("start", common.start)],
         },
-        fallbacks=[
-            CommandHandler("stop", common.stop),
-        ],
+        fallbacks=fallbacks
     )
 
     application.add_handler(conv_handler)
