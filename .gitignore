@@ -2,3 +2,4 @@ downloads/*
 __pycache__/
 tgbot/__pycache__/
 trash/
+.env
