@@ -15,7 +15,7 @@ def debug(msg):
 
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> str:
-    logging.info("def start")
+    debug("def common.start")
 
     if not context.user_data.get(constants.USER_IS_AUTHORIZED):
         context.user_data[constants.USER_IS_AUTHORIZED] = False
@@ -79,7 +79,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> str:
 
 
 async def end_second_level(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    logging.info("def end_second_level")
+    debug("def common.end_second_level")
     context.user_data[constants.START_OVER] = True
     await start(update, context)
 

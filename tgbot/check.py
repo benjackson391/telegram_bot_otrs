@@ -1,6 +1,6 @@
 import logging
 
-from tgbot import helper, constants
+from tgbot import common, helper, constants
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import ContextTypes, ConversationHandler
 
@@ -9,7 +9,7 @@ log = logging.getLogger(__name__)
 
 
 async def check_tickets(update: Update, context: ContextTypes.DEFAULT_TYPE) -> str:
-    logging.info("def check.check_tickets")
+    common.debug("def check.check_tickets")
 
     context.user_data[constants.CURRENT_STEP] = str(constants.CHECK_TICKET)
     return await show_open_tickets(update, context, "Открытые заявки")
@@ -18,7 +18,7 @@ async def check_tickets(update: Update, context: ContextTypes.DEFAULT_TYPE) -> s
 async def show_open_tickets(
     update: Update, context: ContextTypes.DEFAULT_TYPE, text
 ) -> str:
-    logging.info("def check.show_open_tickets")
+    common.debug("def check.show_open_tickets")
 
     context.user_data[constants.TICKETS] = helper.collect_tickets(
         context.user_data[constants.CUSTOMER_USER_LOGIN]
@@ -38,7 +38,7 @@ async def show_open_tickets(
 
 
 async def show_ticket(update: Update, context: ContextTypes.DEFAULT_TYPE) -> str:
-    logging.info("def show_ticket")
+    common.debug("def check.show_ticket")
 
     context.user_data[constants.TICKET_ID] = update.callback_query.data.split("_")[-1]
     context.user_data[constants.TICKETS] = helper.collect_tickets(

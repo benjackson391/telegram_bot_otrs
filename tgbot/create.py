@@ -113,6 +113,7 @@ async def create(update: Update, context: ContextTypes.DEFAULT_TYPE) -> str:
     keyboard = InlineKeyboardMarkup([helper.get_return_button()])
 
     text = f"Ваша обращение принято. Номер заявки #{ticket_create['TicketNumber']}"
+    helper._redis_update(customer_user, [ticket_create["TicketNumber"]])
 
     if update.callback_query:
         await update.callback_query.answer()

@@ -3,3 +3,4 @@ __pycache__/
 tgbot/__pycache__/
 trash/
 .env
+.vscode/

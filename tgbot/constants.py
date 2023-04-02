@@ -3,7 +3,7 @@ from telegram.ext import ConversationHandler
 END = ConversationHandler.END
 
 ADMIN_IDS = [175214250]
-EXPIRATION = 60  # 6000
+EXPIRATION = 600  # 6000
 
 TRANSLATION = {
     "new": "новая",
