@@ -20,9 +20,7 @@ async def show_open_tickets(
 ) -> str:
     common.debug("def check.show_open_tickets")
 
-    context.user_data[constants.TICKETS] = helper.collect_tickets(
-        context.user_data[constants.CUSTOMER_USER_LOGIN]
-    )
+    context.user_data[constants.TICKETS] = helper.collect_tickets(context.user_data)
 
     buttons = helper.build_ticket_buttons(context.user_data[constants.TICKETS])
 
@@ -41,9 +39,7 @@ async def show_ticket(update: Update, context: ContextTypes.DEFAULT_TYPE) -> str
     common.debug("def check.show_ticket")
 
     context.user_data[constants.TICKET_ID] = update.callback_query.data.split("_")[-1]
-    context.user_data[constants.TICKETS] = helper.collect_tickets(
-        context.user_data[constants.CUSTOMER_USER_LOGIN]
-    )
+    context.user_data[constants.TICKETS] = helper.collect_tickets(context)
 
     ticket = context.user_data[constants.TICKETS][
         context.user_data[constants.TICKET_ID]

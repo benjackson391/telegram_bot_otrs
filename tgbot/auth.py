@@ -56,7 +56,7 @@ async def code_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> st
 
     if context.user_data[constants.CONFIRMATION_CODE] == int(code):
         text = "Код верный"
-        ret = constants.SELECTING_ACTION
+        ret = constants.END
         context.user_data[constants.USER_IS_AUTHORIZED] = True  # ?
 
         confirm_account = helper._otrs_request(
@@ -67,8 +67,14 @@ async def code_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> st
             },
         )
 
+        common.debug(confirm_account)
+
         if not confirm_account or confirm_account.get("updated") != 1:
             text += ", но не удалось обновить telegram логин у пользователя,\nобратитесь к администратору"
+
+        context.user_data[constants.CUSTOMER_USER_LOGIN] = confirm_account.get(
+            "user_login"
+        )
 
     await update.message.reply_text(
         text=text, reply_markup=InlineKeyboardMarkup([helper.get_return_button()])

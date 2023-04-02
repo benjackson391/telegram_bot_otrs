@@ -80,8 +80,10 @@ def main() -> None:
 
     application = Application.builder().token(config("TOKEN")).build()
 
-    fallbacks=[
-        CallbackQueryHandler(common.end_second_level, pattern="^" + str(constants.END) + "$"),
+    fallbacks = [
+        CallbackQueryHandler(
+            common.end_second_level, pattern="^" + str(constants.END) + "$"
+        ),
         CommandHandler("stop", common.stop),
     ]
 
@@ -100,7 +102,8 @@ def main() -> None:
                 MessageHandler(filters.TEXT, auth.code_handler),
             ],
         },
-        fallbacks=fallbacks
+        fallbacks=fallbacks,
+        map_to_parent={constants.END: constants.STOPPING},
     )
 
     update_conv = ConversationHandler(
@@ -149,7 +152,7 @@ def main() -> None:
                 MessageHandler(filters.ALL, update.update),
             ],
         },
-        fallbacks=fallbacks
+        fallbacks=fallbacks,
     )
 
     check_conv = ConversationHandler(
@@ -171,7 +174,7 @@ def main() -> None:
                 ),
             ]
         },
-        fallbacks=fallbacks
+        fallbacks=fallbacks,
     )
 
     create_conv = ConversationHandler(
@@ -209,7 +212,7 @@ def main() -> None:
                 MessageHandler(filters.ALL, create.create),
             ],
         },
-        fallbacks=fallbacks
+        fallbacks=fallbacks,
     )
 
     conv_handler = ConversationHandler(
@@ -223,7 +226,7 @@ def main() -> None:
             ],
             constants.STOPPING: [CommandHandler("start", common.start)],
         },
-        fallbacks=fallbacks
+        fallbacks=fallbacks,
     )
 
     application.add_handler(conv_handler)

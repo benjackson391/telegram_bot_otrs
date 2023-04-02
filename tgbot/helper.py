@@ -54,8 +54,10 @@ def collect_ticket(ticket_id, collected_tickets):
     collected_tickets[ticket_id] = ticket
 
 
-def collect_tickets(user_login=""):
+def collect_tickets(user_data={}):
     common.debug("def helper.collect_tickets")
+    common.debug(user_data)
+    user_login = ""
 
     collected_tickets = {}
     tickets = {}

@@ -1,6 +1,6 @@
 import base64, logging, io, os, sys
 
-from tgbot import helper, constants
+from tgbot import common, helper, constants
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import ContextTypes
 
@@ -10,7 +10,7 @@ buffer = io.BytesIO()
 
 
 async def new_ticket(update: Update, context: ContextTypes.DEFAULT_TYPE) -> str:
-    log.debug("def create.new_ticket")
+    common.debug("def create.new_ticket")
 
     context.user_data[constants.NEW_TICKET] = {}
 
@@ -25,7 +25,7 @@ async def new_ticket(update: Update, context: ContextTypes.DEFAULT_TYPE) -> str:
 
 
 async def subject_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> str:
-    log.debug("def create.subject_handler")
+    common.debug("def create.subject_handler")
 
     context.user_data[constants.NEW_TICKET][constants.SUBJECT] = update.message.text
 
@@ -35,7 +35,7 @@ async def subject_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
 
 
 async def body_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> str:
-    log.debug("def create.body_handler")
+    common.debug("def create.body_handler")
     context.user_data[constants.NEW_TICKET][constants.BODY] = update.message.text
 
     buttons = [
@@ -54,7 +54,7 @@ async def body_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> st
 
 
 async def attachment_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> str:
-    log.debug("def create.attachment_upload")
+    common.debug("def create.attachment_upload")
 
     await update.callback_query.answer()
     await update.callback_query.edit_message_text(text="Приложите файл до 20Mb")
@@ -62,7 +62,7 @@ async def attachment_handler(update: Update, context: ContextTypes.DEFAULT_TYPE)
 
 
 async def create(update: Update, context: ContextTypes.DEFAULT_TYPE) -> str:
-    log.debug("def create.create")
+    common.debug("def create.create")
 
     new_ticket = context.user_data.get(constants.NEW_TICKET)
 

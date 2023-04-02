@@ -1,5 +1,5 @@
 import logging, base64, io
-from tgbot import constants, helper
+from tgbot import common, constants, helper
 
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import ContextTypes
@@ -9,11 +9,9 @@ buffer = io.BytesIO()
 
 
 async def update_tickets(update: Update, context: ContextTypes.DEFAULT_TYPE) -> str:
-    log.debug("def update.update_tickets")
+    common.debug("def update.update_tickets")
 
-    context.user_data[constants.TICKETS] = helper.collect_tickets(
-        context.user_data[constants.CUSTOMER_USER_LOGIN]
-    )
+    context.user_data[constants.TICKETS] = helper.collect_tickets(context.user_data)
 
     buttons = helper.build_ticket_buttons(context.user_data[constants.TICKETS])
 
@@ -33,7 +31,7 @@ async def update_tickets(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
 
 
 async def update_ticket(update: Update, context: ContextTypes.DEFAULT_TYPE) -> str:
-    log.debug("def update.update_ticket")
+    common.debug("def update.update_ticket")
 
     context.user_data[constants.UPDATE_TICKET] = {}
 
@@ -70,7 +68,7 @@ async def update_ticket(update: Update, context: ContextTypes.DEFAULT_TYPE) -> s
 
 
 async def add_comment(update: Update, context: ContextTypes.DEFAULT_TYPE) -> str:
-    log.debug("def add_comment")
+    common.debug("def add_comment")
 
     context.user_data[constants.TICKET_ID] = update.callback_query.data.split("_")[-1]
 
@@ -81,7 +79,7 @@ async def add_comment(update: Update, context: ContextTypes.DEFAULT_TYPE) -> str
 
 
 async def comment_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> str:
-    log.debug("def update.comment_handler")
+    common.debug("def update.comment_handler")
     context.user_data[constants.UPDATE_TICKET][constants.COMMENT] = update.message.text
 
     buttons = [
@@ -100,7 +98,7 @@ async def comment_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
 
 
 async def attachment_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> str:
-    log.debug("def create.attachment_upload")
+    common.debug("def create.attachment_upload")
 
     await update.callback_query.answer()
     await update.callback_query.edit_message_text(text="Приложите файл до 20Mb")
@@ -108,7 +106,7 @@ async def attachment_handler(update: Update, context: ContextTypes.DEFAULT_TYPE)
 
 
 async def update(update: Update, context: ContextTypes.DEFAULT_TYPE) -> str:
-    log.debug("def update.update")
+    common.debug("def update.update")
 
     to_update = context.user_data.get(constants.UPDATE_TICKET)
 
