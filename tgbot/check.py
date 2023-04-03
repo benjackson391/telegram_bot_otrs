@@ -11,7 +11,6 @@ log = logging.getLogger(__name__)
 async def check_tickets(update: Update, context: ContextTypes.DEFAULT_TYPE) -> str:
     common.debug("def check.check_tickets")
 
-    context.user_data[constants.CURRENT_STEP] = str(constants.CHECK_TICKET)
     return await show_open_tickets(update, context, "Открытые заявки")
 
 

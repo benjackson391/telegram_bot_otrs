@@ -19,7 +19,6 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> str:
 
     if not context.user_data.get(constants.USER_IS_AUTHORIZED):
         context.user_data[constants.USER_IS_AUTHORIZED] = False
-        context.user_data[constants.CONFIRMATION_CODE_STATUS] = 0
         context.user_data[constants.CUSTOMER_USER_LOGIN] = ""
 
         auth = helper._otrs_request(
@@ -28,8 +27,6 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> str:
         if "Error" not in auth:
             context.user_data[constants.USER_IS_AUTHORIZED] = True
             context.user_data[constants.CUSTOMER_USER_LOGIN] = auth["CustomerUserLogin"]
-
-    context.user_data[constants.EMAIL_NOT_FOUND] = False
 
     text = (
         "Вы можете создать, обновить или проверить статус вашей заявки. "

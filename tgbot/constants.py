@@ -12,51 +12,47 @@ TRANSLATION = {
     "pending auto": "ожидает автозакрытия",
 }
 
-# auth
-# update
-COMMENT = 0
-# check
-# create
 (
-    NEW_TICKET,  # 0
-    SUBJECT,  # 1
-    BODY,  # 2
-    ATTACHMENT,  # 3
-    UPLOAD,  # 4
-    FINISH,  # 5
-    CREATE,  # 6
-    CREATE_WITH_ATTACHMENT,  # 7
-    FILE_PATH,  # 8
-    FILE_NAME,  # 9
-    FILE_TYPE,  # 10
-) = range(1, 12)
-
-(
-    # states
-    USER_IS_AUTHORIZED,  # 12
-    AUTHORISATION,  # 13
-    NEW_TICKET,  # 14
-    CHECK_TICKET,  # 15
-    UPDATE_TICKET,  # 16
-    START_OVER,  # 17
-    SELECTING_ACTION,  # 18
-    CURRENT_STEP,  # 19
-    TYPING,  # 20
-    AUTHORISATION_PROCESS,  # 21
-    AUTH_PROCESS,  # 22
-    CONFIRMATION_CODE,  # 23
-    CONFIRMATION_CODE_STATUS,  # 24
-    CUSTOMER_USER_LOGIN,  # 25
-    SELECTING_FEATURE,  # 26
-    OVERVIEW,  # 27
-    STOPPING,  # 28
-    TICKETS,  # 29
-    TICKET_ID,  # 30
-    # new_ticket
-    # attributes
-    EMAIL,  # 31
-    # errors
-    EMAIL_NOT_FOUND,  # 33
-    UPLOAD_ATTACHMENT,  # 34
+    # 0
+    ATTACHMENT,
+    # 1
+    AUTHORISATION,
+    # 2
+    BODY,
+    # 3
+    CHECK_TICKET,
+    # 4
+    COMMENT,
+    # 5
+    CONFIRMATION_CODE,
+    # 6
+    CREATE,
+    # 7
+    CREATE_WITH_ATTACHMENT,
+    # 8
+    CUSTOMER_USER_LOGIN,
+    # 9
+    EMAIL,
+    # 10
+    NEW_TICKET,
+    # 11
+    SELECTING_ACTION,
+    # 12
+    SELECTING_FEATURE,
+    # 13
     SHOW_TICKETS,
-) = map(int, range(12, 35))
+    # 14
+    START_OVER,
+    # 15
+    SUBJECT,
+    # 16
+    TICKETS,
+    # 17
+    TICKET_ID,
+    # 18
+    UPDATE_TICKET,
+    # 19
+    UPLOAD,
+    # 20
+    USER_IS_AUTHORIZED,
+) = map(int, range(0, 21))

@@ -87,9 +87,7 @@ def main() -> None:
         CommandHandler("stop", common.stop),
     ]
 
-    map_to_parent={
-        constants.SELECTING_ACTION: constants.END
-    }
+    map_to_parent = {constants.SELECTING_ACTION: constants.END}
 
     auth_conv = ConversationHandler(
         entry_points=[
@@ -107,7 +105,7 @@ def main() -> None:
             ],
         },
         fallbacks=fallbacks,
-        map_to_parent=map_to_parent
+        map_to_parent=map_to_parent,
     )
 
     update_conv = ConversationHandler(
@@ -179,7 +177,7 @@ def main() -> None:
             ]
         },
         fallbacks=fallbacks,
-        map_to_parent=map_to_parent
+        map_to_parent=map_to_parent,
     )
 
     create_conv = ConversationHandler(
