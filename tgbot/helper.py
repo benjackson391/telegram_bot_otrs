@@ -57,7 +57,7 @@ def collect_ticket(ticket_id, collected_tickets):
 def collect_tickets(user_data={}):
     common.debug("def helper.collect_tickets")
     common.debug(user_data)
-    user_login = ""
+    user_login = user_data.get(constants.CUSTOMER_USER_LOGIN)
 
     collected_tickets = {}
     tickets = {}

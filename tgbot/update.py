@@ -112,8 +112,6 @@ async def update(update: Update, context: ContextTypes.DEFAULT_TYPE) -> str:
 
     # TODO fix this place
     customer_user = context.user_data.get(constants.CUSTOMER_USER_LOGIN)
-    if not customer_user:
-        customer_user = context.user_data.get(constants.EMAIL)
 
     json = {
         "TicketID": to_update.get(constants.TICKET_ID),

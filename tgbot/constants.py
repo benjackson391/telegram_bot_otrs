@@ -46,15 +46,15 @@ COMMENT = 0
     AUTH_PROCESS,  # 22
     CONFIRMATION_CODE,  # 23
     CONFIRMATION_CODE_STATUS,  # 24
-    CUSTOMER_USER_LOGIN,  # 26
-    SELECTING_FEATURE,  # 27
-    OVERVIEW,  # 28
-    STOPPING,  # 29
-    TICKETS,  # 30
-    TICKET_ID,  # 31
+    CUSTOMER_USER_LOGIN,  # 25
+    SELECTING_FEATURE,  # 26
+    OVERVIEW,  # 27
+    STOPPING,  # 28
+    TICKETS,  # 29
+    TICKET_ID,  # 30
     # new_ticket
     # attributes
-    EMAIL,  # 32
+    EMAIL,  # 31
     # errors
     EMAIL_NOT_FOUND,  # 33
     UPLOAD_ATTACHMENT,  # 34

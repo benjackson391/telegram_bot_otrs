@@ -65,11 +65,7 @@ async def create(update: Update, context: ContextTypes.DEFAULT_TYPE) -> str:
     common.debug("def create.create")
 
     new_ticket = context.user_data.get(constants.NEW_TICKET)
-
-    # TODO fix this place
     customer_user = context.user_data.get(constants.CUSTOMER_USER_LOGIN)
-    if not customer_user:
-        customer_user = context.user_data.get(constants.EMAIL)
 
     json = {
         "Ticket": {

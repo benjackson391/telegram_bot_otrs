@@ -81,7 +81,9 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> str:
 async def end_second_level(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     debug("def common.end_second_level")
     context.user_data[constants.START_OVER] = True
-    return await start(update, context)
+    await start(update, context)
+
+    return constants.END
 
 
 async def stop(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
