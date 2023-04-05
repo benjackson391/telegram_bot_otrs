@@ -24,8 +24,10 @@ def _otrs_request(path: str, json: str) -> Any:
 
 
 def _get_redis(key):
-    raw = r.get(key)
-    return json.loads(raw)
+    if r.exists(key):
+        return json.loads(r.get(key))
+
+    return None
 
 
 def _set_redis(key, value):
@@ -35,6 +37,9 @@ def _set_redis(key, value):
 
 def _redis_update(key, value):
     current_value = _get_redis(key)
+    if not current_value:
+        return None
+
     result = current_value + value
     _set_redis(key, result)
 
