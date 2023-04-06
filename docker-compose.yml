@@ -10,11 +10,18 @@ version: "3"
 # docker-compose logs --tail 20 repo_name
 
 services:
+  base_image:
+    build:
+      context: "."
+      dockerfile: df_base
+    image: efsol_bot_base:latest
   bot:
     build:
       context: "."
       dockerfile: Dockerfile
+    image: efsol_bot:latest
     depends_on:
+      - base_image
       - redis
     networks:
       - app-tier
