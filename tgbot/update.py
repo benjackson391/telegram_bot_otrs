@@ -98,7 +98,7 @@ async def comment_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
 
 
 async def attachment_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> str:
-    common.debug("def create.attachment_upload")
+    common.debug("def update.attachment_upload")
 
     await update.callback_query.answer()
     await update.callback_query.edit_message_text(text="Приложите файл до 20Mb")
@@ -128,6 +128,9 @@ async def update(update: Update, context: ContextTypes.DEFAULT_TYPE) -> str:
 
     if update.message and update.message.document:
         new_file = await context.bot.get_file(update.message.document.file_id)
+
+        if new_file.file_size > 3000000:
+            await update.message.reply_text(text='Загружен файл большого объёма, его обработка может занять длительное время. Пожалуйста подождите.')
 
         await new_file.download_to_memory(buffer)
 
