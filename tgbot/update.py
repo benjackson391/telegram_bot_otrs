@@ -68,7 +68,7 @@ async def update_ticket(update: Update, context: ContextTypes.DEFAULT_TYPE) -> s
 
 
 async def add_comment(update: Update, context: ContextTypes.DEFAULT_TYPE) -> str:
-    common.debug("def add_comment")
+    common.debug("def update.add_comment")
 
     context.user_data[constants.TICKET_ID] = update.callback_query.data.split("_")[-1]
 
@@ -109,8 +109,6 @@ async def update(update: Update, context: ContextTypes.DEFAULT_TYPE) -> str:
     common.debug("def update.update")
 
     to_update = context.user_data.get(constants.UPDATE_TICKET)
-
-    # TODO fix this place
     customer_user = context.user_data.get(constants.CUSTOMER_USER_LOGIN)
 
     json = {
@@ -127,20 +125,26 @@ async def update(update: Update, context: ContextTypes.DEFAULT_TYPE) -> str:
     }
 
     if update.message and update.message.document:
-        new_file = await context.bot.get_file(update.message.document.file_id)
+        if update.message.document.file_size > constants.FILE_LIMIT:
+            await update.message.reply_text(
+                text=constants.MESSAGE_FILE_BIG
+            )
+            return constants.CREATE_WITH_ATTACHMENT
+        else:
+            if update.message.document.file_size > constants.FILE_BIG_THRESHOLD:
+                await update.message.reply_text(text=constants.MESSAGE_FILE_LARGE)
 
-        if new_file.file_size > 3000000:
-            await update.message.reply_text(text='Загружен файл большого объёма, его обработка может занять длительное время. Пожалуйста подождите.')
+            new_file = await context.bot.get_file(update.message.document.file_id)
 
-        await new_file.download_to_memory(buffer)
+            await new_file.download_to_memory(buffer)
 
-        content = base64.b64encode(buffer.getvalue()).decode("utf-8")
+            content = base64.b64encode(buffer.getvalue()).decode("utf-8")
 
-        json["Attachment"] = {
-            "Content": content,
-            "ContentType": update.message.document.mime_type,
-            "Filename": update.message.document.file_name,
-        }
+            json["Attachment"] = {
+                "Content": content,
+                "ContentType": update.message.document.mime_type,
+                "Filename": update.message.document.file_name,
+            }
 
     ticket_update = helper._otrs_request("update", json)
 

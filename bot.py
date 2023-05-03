@@ -28,6 +28,7 @@ from telegram.ext import (
     ConversationHandler,
     MessageHandler,
     filters,
+    PicklePersistence
 )
 
 from rich.traceback import install
@@ -78,7 +79,9 @@ def init_logging():
 def main() -> None:
     init_logging()
 
-    application = Application.builder().token(config("TOKEN")).build()
+    persistence = PicklePersistence(filepath="arbitrarycallbackdatabot")
+
+    application = Application.builder().token(config("TOKEN")).persistence(persistence).arbitrary_callback_data(True).build()
 
     fallbacks = [
         CallbackQueryHandler(

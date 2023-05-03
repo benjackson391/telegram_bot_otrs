@@ -90,20 +90,26 @@ async def create(update: Update, context: ContextTypes.DEFAULT_TYPE) -> str:
     }
 
     if update.message and update.message.document:
-        new_file = await context.bot.get_file(update.message.document.file_id)
+        if update.message.document.file_size > constants.FILE_LIMIT:
+            await update.message.reply_text(
+                text=constants.MESSAGE_FILE_BIG
+            )
+            return constants.CREATE_WITH_ATTACHMENT
+        else:
+            if update.message.document.file_size > constants.FILE_BIG_THRESHOLD:
+                await update.message.reply_text(text=constants.MESSAGE_FILE_LARGE)
 
-        if new_file.file_size > 3000000:
-            await update.message.reply_text(text='Загружен файл большого объёма, его обработка может занять длительное время. Пожалуйста подождите.')
+            new_file = await context.bot.get_file(update.message.document.file_id)
 
-        await new_file.download_to_memory(buffer)
+            await new_file.download_to_memory(buffer)
 
-        content = base64.b64encode(buffer.getvalue()).decode("utf-8")
+            content = base64.b64encode(buffer.getvalue()).decode("utf-8")
 
-        json["Attachment"] = {
-            "Content": content,
-            "ContentType": update.message.document.mime_type,
-            "Filename": update.message.document.file_name,
-        }
+            json["Attachment"] = {
+                "Content": content,
+                "ContentType": update.message.document.mime_type,
+                "Filename": update.message.document.file_name,
+            }
 
     # заглушка для тестирования
     # ticket_create = {"TicketNumber": 123}
