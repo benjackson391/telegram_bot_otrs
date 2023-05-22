@@ -21,8 +21,15 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> str:
         context.user_data[constants.USER_IS_AUTHORIZED] = False
         context.user_data[constants.CUSTOMER_USER_LOGIN] = ""
 
+        user = {}
+
+        if update.callback_query:
+            user = update.callback_query['from']
+        else:
+            user = update.message.from_user
+
         auth = helper._otrs_request(
-            "auth", {"TelegramLogin": update.message.from_user.username}
+            "auth", {"TelegramLogin": user.username}
         )
         if "Error" not in auth:
             context.user_data[constants.USER_IS_AUTHORIZED] = True
