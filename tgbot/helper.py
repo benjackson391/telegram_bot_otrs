@@ -11,14 +11,14 @@ r = redis.Redis(host=config("REDIS"), port=6379, db=0)
 
 def _otrs_request(path: str, json: str) -> Any:
     common.debug("def helper._otrs_request")
-    common.debug(f"path: {path} request: {json}")
+    # common.debug(f"path: {path} request: {json}")
 
     json["UserLogin"] = config("OTRS_USER")
     json["Password"] = config("OTRS_PASSWORD")
 
     response = requests.post(f'{config("URL")}/{path}', json=json)
     response_json = response.json()
-    common.debug(f"code: {response.status_code} raw: {response_json}")
+    # common.debug(f"code: {response.status_code} raw: {response_json}")
 
     return response_json
 

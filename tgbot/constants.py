@@ -5,7 +5,7 @@ END = ConversationHandler.END
 ADMIN_IDS = [175214250]
 EXPIRATION = 600  # 6000
 
-FILE_LIMIT = 21000000
+FILE_LIMIT = 5 * 1048576
 FILE_BIG_THRESHOLD = 3000000
 
 MESSAGE_FILE_BIG = 'Файл слишком большой. Приложите другой файл'
