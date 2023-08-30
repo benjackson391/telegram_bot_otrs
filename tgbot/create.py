@@ -1,5 +1,6 @@
 import base64, logging, io, os, sys
 
+from decouple import config
 from tgbot import common, helper, constants
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import ContextTypes
@@ -56,8 +57,19 @@ async def body_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> st
 async def attachment_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> str:
     common.debug("def create.attachment_upload")
 
+    buttons = [
+        [
+            InlineKeyboardButton(
+                text="Создать без вложения", callback_data=str(constants.CREATE)
+            ),
+        ],
+    ]
+    keyboard = InlineKeyboardMarkup(buttons)
+
     await update.callback_query.answer()
-    await update.callback_query.edit_message_text(text="Приложите файл до 20Mb")
+    await update.callback_query.edit_message_text(
+        text="Приложите файл до 20Mb", reply_markup=keyboard
+    )
     return constants.CREATE_WITH_ATTACHMENT
 
 
@@ -67,10 +79,13 @@ async def create(update: Update, context: ContextTypes.DEFAULT_TYPE) -> str:
     new_ticket = context.user_data.get(constants.NEW_TICKET)
     customer_user = context.user_data.get(constants.CUSTOMER_USER_LOGIN)
 
+    # 3: spam
+    # 2: '1-я линия'
+    queue_id = 3 if config("DEBUG") == 1 else 2
     json = {
         "Ticket": {
             "Title": new_ticket[constants.SUBJECT],
-            "Queue": "spam",
+            "QueueID": queue_id,
             "TypeID": 3,  # Запрос на обслуживание
             "CustomerUser": customer_user,
             "StateID": 1,  # new
@@ -91,9 +106,7 @@ async def create(update: Update, context: ContextTypes.DEFAULT_TYPE) -> str:
 
     if update.message and update.message.document:
         if update.message.document.file_size > constants.FILE_LIMIT:
-            await update.message.reply_text(
-                text=constants.MESSAGE_FILE_BIG
-            )
+            await update.message.reply_text(text=constants.MESSAGE_FILE_BIG)
             return constants.CREATE_WITH_ATTACHMENT
         else:
             if update.message.document.file_size > constants.FILE_BIG_THRESHOLD:
@@ -120,13 +133,29 @@ async def create(update: Update, context: ContextTypes.DEFAULT_TYPE) -> str:
     text = f"Ваша обращение принято. Номер заявки #{ticket_create['TicketNumber']}"
     helper._redis_update(customer_user, [ticket_create["TicketNumber"]])
 
-    if update.callback_query:
-        await update.callback_query.answer()
-        await update.callback_query.edit_message_text(text=text, reply_markup=keyboard)
-    else:
-        await update.message.reply_text(
-            text=text,
-            reply_markup=keyboard,
-        )
+    query = update.callback_query
+    message = query.message
+
+    # Изменяем существующее сообщение
+    await context.bot.edit_message_text(
+        chat_id=query.message.chat_id, message_id=message.message_id, text=text
+    )
+
+    # Отправляем второе сообщение с новым текстом
+    await context.bot.send_message(
+        chat_id=query.message.chat_id, text="-", reply_markup=keyboard
+    )
+
+    # Отвечаем на callback query
+    await query.answer()
+
+    # if update.callback_query:
+    #     await update.callback_query.answer()
+    #     await update.callback_query.edit_message_text(text=text, reply_markup=keyboard)
+    # else:
+    #     await update.message.reply_text(
+    #         text=text,
+    #         reply_markup=keyboard,
+    #     )
 
     return constants.ATTACHMENT

@@ -6,17 +6,17 @@ from telegram import InlineKeyboardButton
 from tgbot import constants, common
 
 log = logging.getLogger(__name__)
-r = redis.Redis(host=config("REDIS"), port=6379, db=0)
+redis_host = 'localhost' if config("DEBUG") else 'redis'
+r = redis.Redis(host=redis_host, port=6379, db=0)
 
 
 def _otrs_request(path: str, json: str) -> Any:
     common.debug("def helper._otrs_request")
-    # common.debug(f"path: {path} request: {json}")
 
     json["UserLogin"] = config("OTRS_USER")
     json["Password"] = config("OTRS_PASSWORD")
 
-    response = requests.post(f'{config("URL")}/{path}', json=json)
+    response = requests.post(f'{config("URL")}/{path}', json=json, verify=False)
     response_json = response.json()
     # common.debug(f"code: {response.status_code} raw: {response_json}")
 
@@ -53,7 +53,16 @@ def collect_ticket(ticket_id, collected_tickets):
     if r.exists(ticket_id):
         ticket = _get_redis(ticket_id)
     else:
-        ticket = _otrs_request(f"ticket/{ticket_id}", {})["Ticket"][0]
+        ticket = _otrs_request(
+            f"ticket/{ticket_id}",
+            {
+                "DynamicFields": 1,
+                "AllArticles": True,
+                "ArticleLimit": 1,
+                "Extended": True,
+                "ArticleOrder": "ASC",
+            },
+        )["Ticket"][0]
         _set_redis(ticket_id, ticket)
 
     collected_tickets[ticket_id] = ticket
@@ -72,7 +81,7 @@ def collect_tickets(user_data={}):
             "search",
             {
                 "CustomerUserLogin": user_login,
-                "StateType": ["open", "new", "pending reminder"],
+                "StateType": ["open", "new", "pending reminder", "pending auto"],
             },
         )
         tickets = res.get("TicketID") if res else {}
@@ -90,17 +99,43 @@ def collect_tickets(user_data={}):
 def build_ticket_buttons(tickets=[]):
     common.debug("def helper.build_ticket_buttons")
 
+    ticket_status_check = {
+        "open": [],
+        "pending": [],
+        "open_count": 0,
+        "pending_count": 0,
+    }
+
     buttons = []
     for ticket_id in tickets:
         ticket = tickets[ticket_id]
+        if ticket["StateType"] == "pending auto":
+            ticket_status_check["pending"].append(ticket_id)
+        else:
+            ticket_status_check["open"].append(ticket_id)
+
+    ticket_status_check["open_count"] = len(ticket_status_check["open"])
+    ticket_status_check["pending_count"] = len(ticket_status_check["pending"])
+
+    if ticket_status_check["open_count"] > 0:
         buttons.append(
             [
                 InlineKeyboardButton(
-                    text=f"#{ticket['TicketNumber']}: {ticket['Title']}",
-                    callback_data=f"TICKET_{ticket['TicketID']}",
+                    text=f"Открытые заявки ({ticket_status_check['open_count']})",
+                    callback_data="TICKET_STATUS_OPEN",
+                )
+            ]
+        )
+
+    if ticket_status_check["pending_count"] > 0:
+        buttons.append(
+            [
+                InlineKeyboardButton(
+                    text=f"Заявки на оценку ({ticket_status_check['pending_count']})",
+                    callback_data="TICKET_STATUS_PENDING",
                 )
             ]
         )
 
     buttons.append(get_return_button())
-    return buttons
+    return buttons, ticket_status_check

@@ -3,19 +3,21 @@ from telegram.ext import ConversationHandler
 END = ConversationHandler.END
 
 ADMIN_IDS = [175214250]
-EXPIRATION = 600  # 6000
+EXPIRATION = 60  # 6000
 
 FILE_LIMIT = 5 * 1048576
 FILE_BIG_THRESHOLD = 3000000
 
-MESSAGE_FILE_BIG = 'Файл слишком большой. Приложите другой файл'
-MESSAGE_FILE_LARGE = 'Загружен файл большого объёма, его обработка может занять длительное время. Пожалуйста подождите.'
+MESSAGE_FILE_BIG = "Файл слишком большой. Приложите другой файл"
+MESSAGE_FILE_LARGE = "Загружен файл большого объёма, его обработка может занять длительное время. Пожалуйста подождите."
 
 TRANSLATION = {
     "new": "новая",
     "open": "открыта",
     "pending reminder": "ожидает напоминания",
     "pending auto": "ожидает автозакрытия",
+    "pending auto close+": "ожидает автозакрытия(+)",
+    "pending auto close-": "ожидает автозакрытия(-)",
 }
 
 (
@@ -61,4 +63,8 @@ TRANSLATION = {
     UPLOAD,
     # 20
     USER_IS_AUTHORIZED,
-) = map(int, range(0, 21))
+    # 31
+    TICKET_STATUS,
+    # 32
+    CANCEL,
+) = map(int, range(0, 23))

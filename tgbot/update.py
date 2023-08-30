@@ -126,9 +126,7 @@ async def update(update: Update, context: ContextTypes.DEFAULT_TYPE) -> str:
 
     if update.message and update.message.document:
         if update.message.document.file_size > constants.FILE_LIMIT:
-            await update.message.reply_text(
-                text=constants.MESSAGE_FILE_BIG
-            )
+            await update.message.reply_text(text=constants.MESSAGE_FILE_BIG)
             return constants.CREATE_WITH_ATTACHMENT
         else:
             if update.message.document.file_size > constants.FILE_BIG_THRESHOLD:

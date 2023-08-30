@@ -1,12 +1,13 @@
 #!/usr/bin/env python
 
 
-import argparse, click, logging
+import argparse, click, logging, multiprocessing
 from decouple import config
 from rich_argparse import RichHelpFormatter
 
 from tgbot import auth, common, constants, create, check, error, update
 
+from telegram import Update
 from telegram import __version__ as TG_VER
 
 try:
@@ -28,11 +29,15 @@ from telegram.ext import (
     ConversationHandler,
     MessageHandler,
     filters,
-    PicklePersistence
+    PicklePersistence,
 )
 
 from rich.traceback import install
 from rich.logging import RichHandler
+
+from warnings import filterwarnings
+from telegram.warnings import PTBUserWarning
+filterwarnings(action="ignore", message=r".*CallbackQueryHandler", category=PTBUserWarning)
 
 install(show_locals=True)
 
@@ -81,7 +86,14 @@ def main() -> None:
 
     persistence = PicklePersistence(filepath="arbitrarycallbackdatabot")
 
-    application = Application.builder().token(config("TOKEN")).persistence(persistence).arbitrary_callback_data(True).build()
+    application = (
+        Application.builder()
+        .token(config("DEBUG_TOKEN") if config("DEBUG") == 1 else config("TOKEN"))
+        .persistence(persistence)
+        .arbitrary_callback_data(True)
+        .concurrent_updates(True)
+        .build()
+    )
 
     fallbacks = [
         CallbackQueryHandler(
@@ -170,13 +182,34 @@ def main() -> None:
         states={
             constants.SELECTING_FEATURE: [
                 CallbackQueryHandler(
+                    check.show_open_tickets,
+                    pattern="^TICKET_STATUS_OPEN$",
+                ),
+                CallbackQueryHandler(
+                    check.show_pending_tickets,
+                    pattern="^TICKET_STATUS_PENDING$",
+                ),
+                CallbackQueryHandler(
                     check.show_ticket,
                     pattern="^TICKET_\d+$",
+                ),
+                CallbackQueryHandler(
+                    check.show_ticket_and_vote,
+                    pattern="^TICKET_AND_VOTE_\d+$",
+                ),
+                CallbackQueryHandler(
+                    check.vote,
+                    pattern="^TICKET_AND_VOTE_SEND_\d+_\d$",
+                ),
+                CallbackQueryHandler(
+                    check.rework,
+                    pattern="^TICKET_AND_VOTE_SEND_\d+$",
                 ),
                 CallbackQueryHandler(
                     common.end_second_level,
                     pattern="^" + str(constants.END) + "$",
                 ),
+                MessageHandler(filters.TEXT, check.rework_comment_handler),
             ]
         },
         fallbacks=fallbacks,
@@ -215,6 +248,9 @@ def main() -> None:
                 ),
             ],
             constants.CREATE_WITH_ATTACHMENT: [
+                CallbackQueryHandler(
+                    create.create, pattern="^" + str(constants.CREATE) + "$"
+                ),
                 MessageHandler(filters.ALL, create.create),
             ],
         },
@@ -236,7 +272,7 @@ def main() -> None:
 
     application.add_handler(conv_handler)
     application.add_error_handler(error.error_handler)
-    application.run_polling()
+    application.run_polling(allowed_updates=Update.ALL_TYPES)
 
 
 if __name__ == "__main__":

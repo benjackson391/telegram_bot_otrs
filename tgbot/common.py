@@ -10,7 +10,7 @@ log = logging.getLogger(__name__)
 
 
 def debug(msg):
-    if config("DEBUG"):
+    if config("DEBUG") == 1:
         logging.info(msg)
 
 
@@ -24,21 +24,16 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> str:
         user = {}
 
         if update.callback_query:
-            user = update.callback_query['from']
+            user = update.callback_query["from"]
         else:
             user = update.message.from_user
 
-        auth = helper._otrs_request(
-            "auth", {"TelegramLogin": user.username}
-        )
+        auth = helper._otrs_request("auth", {"TelegramLogin": user.username})
         if "Error" not in auth:
             context.user_data[constants.USER_IS_AUTHORIZED] = True
             context.user_data[constants.CUSTOMER_USER_LOGIN] = auth["CustomerUserLogin"]
 
-    text = (
-        "Вы можете создать, обновить или проверить статус вашей заявки. "
-        "Для остановки бота просто напишите /stop"
-    )
+    text = "Вы можете создать, обновить или проверить статус вашей заявки. Для остановки бота просто напишите /stop, для повторного запуска нажмите /start"
 
     not_auth_buttons = [
         InlineKeyboardButton(
@@ -69,7 +64,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> str:
         )
     )
 
-    if context.user_data.get(constants.START_OVER):
+    if update.callback_query and context.user_data.get(constants.START_OVER):
         await update.callback_query.answer()
         await update.callback_query.edit_message_text(text=text, reply_markup=keyboard)
     else:
@@ -91,6 +86,7 @@ async def end_second_level(update: Update, context: ContextTypes.DEFAULT_TYPE) -
 
 
 async def stop(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    await update.message.reply_text("До встречи.")
+    if update.message:
+        await update.message.reply_text("До встречи.")
 
     return constants.END
